@@ -1,0 +1,2891 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>雪雪の出摊计算器</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#3f7cac">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="雪雪の出摊计算器">
+<style>
+/* ===========================================================
+   手机版样式：一切以「单手能在摊位上点准」为准
+   - 触控目标不小于 44px
+   - 数字全部等宽对齐，避免金额跳动
+   - 底部导航避开系统手势条（safe-area-inset-bottom）
+   =========================================================== */
+:root{
+  --brand:#3f7cac; --brand-strong:#2f628c; --brand-soft:#eaf3fa; --brand-line:#cfe3f2;
+  --ink:#1d2430; --ink-soft:#5b6675; --ink-faint:#8d97a5;
+  --bg:#f4f6f9; --surface:#fff; --line:#e3e8ef; --line-strong:#ccd4de;
+  --danger:#d9534f; --danger-soft:#fdeceb; --warn:#c9820a; --warn-soft:#fdf5e4;
+  --ok:#2e8b6b; --ok-soft:#e8f6f0;
+  --r:14px; --r-sm:10px; --r-lg:20px;
+  --shadow:0 4px 16px rgba(29,36,48,.09);
+  --shadow-lg:0 12px 40px rgba(29,36,48,.22);
+  --nav-h:62px;
+  --mono:"Cascadia Mono",Consolas,ui-monospace,monospace;
+  --font:"PingFang SC","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--font);
+  font-size:15px;line-height:1.55;-webkit-text-size-adjust:100%;overscroll-behavior-y:contain}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+a{color:var(--brand);text-decoration:none}
+
+.header{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:9px;
+  padding:calc(env(safe-area-inset-top) + 9px) 14px 9px;background:var(--surface);
+  border-bottom:1px solid var(--line)}
+.header__logo{width:30px;height:30px;flex:none;border-radius:9px;
+  background:linear-gradient(135deg,var(--brand),#6aa6cf);color:#fff;display:grid;
+  place-items:center;font-weight:700;font-size:15px}
+.header__title{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15.5px}
+.header__session{margin-left:auto;font-size:11.5px;max-width:44vw;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+
+.main{padding:12px 12px calc(var(--nav-h) + env(safe-area-inset-bottom) + 14px)}
+.view{display:none}.view.is-active{display:block}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:0 1px 2px rgba(29,36,48,.05);padding:13px}
+.card+.card{margin-top:11px}
+.card--flush{padding:0;overflow:hidden}
+.title{margin:0 0 3px;font-size:19px;font-weight:650}
+.desc{margin:0 0 12px;color:var(--ink-soft);font-size:13px}
+.section{display:flex;align-items:center;gap:7px;margin:16px 0 9px;font-size:14.5px;font-weight:650}
+.section:first-child{margin-top:0}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row--between{justify-content:space-between}
+.spacer{flex:1}
+.muted{color:var(--ink-soft)}.faint{color:var(--ink-faint)}
+.small{font-size:12.5px}.tiny{font-size:11.5px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.nowrap{white-space:nowrap}.hidden{display:none!important}
+.mt-6{margin-top:6px}.mt-10{margin-top:10px}.mt-16{margin-top:16px}
+.center{text-align:center}
+
+/* 按钮 */
+.btn{appearance:none;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);
+  border-radius:var(--r-sm);padding:0 14px;min-height:44px;font-weight:550;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;
+  transition:background .1s,transform .05s}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.45}
+.btn--primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn--primary:disabled{background:var(--brand);border-color:var(--brand)}
+.btn--danger{color:var(--danger);border-color:#f0c4c2;background:#fff}
+.btn--ghost{border-color:transparent;background:transparent;color:var(--ink-soft)}
+.btn--block{width:100%}
+.btn--lg{min-height:52px;font-size:16.5px;border-radius:var(--r)}
+.btn--sm{min-height:34px;padding:0 10px;font-size:12.5px;border-radius:8px}
+.btn--xs{min-height:30px;padding:0 8px;font-size:12px;border-radius:7px}
+
+/* 表单 */
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:11px}
+.field__label{font-size:12.5px;font-weight:550;color:var(--ink-soft)}
+.field__hint{font-size:11.5px;color:var(--ink-faint)}
+.input,.select{width:100%;border:1px solid var(--line-strong);border-radius:var(--r-sm);
+  padding:9px 11px;min-height:44px;background:#fff}
+.input:focus,.select:focus{outline:none;border-color:var(--brand);
+  box-shadow:0 0 0 3px var(--brand-soft)}
+.input--num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.form-grid{display:grid;gap:11px}
+/* 手机上也让两个短字段并排：表单能短一大截，需要滚动的概率小很多 */
+.form-grid--2{grid-template-columns:1fr 1fr}
+.form-grid--2 .field--full,.form-grid--2 .switch{grid-column:1/-1}
+.form-grid--2 .field__hint{font-size:11px}
+
+/* 开关 */
+.switch{display:inline-flex;align-items:center;gap:9px;cursor:pointer;min-height:44px;user-select:none}
+.switch input{position:absolute;opacity:0;pointer-events:none}
+.switch__track{width:44px;height:25px;flex:none;border-radius:999px;background:#d5dbe3;
+  position:relative;transition:background .15s}
+.switch__track::after{content:"";position:absolute;top:3px;left:3px;width:19px;height:19px;
+  border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.15);transition:transform .15s}
+.switch input:checked+.switch__track{background:var(--brand)}
+.switch input:checked+.switch__track::after{transform:translateX(19px)}
+
+/* 徽标 */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:999px;
+  font-size:11.5px;font-weight:550;background:#eef1f6;color:var(--ink-soft);white-space:nowrap}
+.badge--danger{background:var(--danger-soft);color:var(--danger)}
+.badge--warn{background:var(--warn-soft);color:var(--warn)}
+.badge--ok{background:var(--ok-soft);color:var(--ok)}
+.badge--brand{background:var(--brand-soft);color:var(--brand-strong)}
+
+/* 商品网格 */
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:5px;margin-bottom:9px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line-strong);background:#fff;color:var(--ink-soft);
+  border-radius:999px;padding:0 13px;min-height:36px;font-size:13px;font-weight:550;cursor:pointer;
+  display:inline-flex;align-items:center}
+.chip.is-active{background:var(--brand);border-color:var(--brand);color:#fff}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:9px}
+.goods{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:7px;
+  cursor:pointer;display:flex;flex-direction:column;gap:5px;position:relative;text-align:left;
+  transition:transform .06s,border-color .1s;min-height:44px}
+.goods:active{transform:scale(.97)}
+.goods.is-picked{border-color:var(--brand);box-shadow:0 0 0 2px var(--brand-soft)}
+.goods.is-out{opacity:.6}
+.goods__thumb{position:relative;aspect-ratio:1/1;border-radius:var(--r-sm);overflow:hidden;
+  background:var(--brand-soft);display:grid;place-items:center}
+.goods__thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.goods__ph{font-size:27px;font-weight:700;color:var(--brand);opacity:.55}
+.goods__qty{position:absolute;top:5px;right:5px;min-width:23px;height:23px;padding:0 6px;
+  border-radius:999px;background:var(--brand);color:#fff;font-size:12.5px;font-weight:700;
+  display:grid;place-items:center;font-family:var(--mono)}
+.goods__out{position:absolute;left:5px;top:5px;background:var(--danger);color:#fff;
+  border-radius:6px;padding:1px 6px;font-size:11px;font-weight:600}
+.goods__name{font-size:12.5px;font-weight:550;line-height:1.32;display:-webkit-box;
+  -webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.64em}
+.goods__meta{display:flex;justify-content:space-between;align-items:baseline;gap:5px}
+.goods__price{font-size:14px;font-weight:700;color:var(--brand-strong);font-family:var(--mono)}
+.goods__stock{font-size:11px;color:var(--ink-faint)}
+.goods__stock.is-low{color:var(--danger);font-weight:600}
+.goods__rule{position:absolute;left:5px;bottom:5px;background:rgba(63,124,172,.92);color:#fff;
+  border-radius:6px;padding:0 5px;font-size:10px;font-weight:600}
+
+/* 底部结算条 */
+.buybar{position:fixed;left:0;right:0;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom));
+  z-index:28;display:flex;align-items:center;gap:9px;padding:9px 12px;
+  background:rgba(255,255,255,.97);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+.buybar__mid{flex:1;min-width:0;cursor:pointer}
+.buybar__count{font-size:11.5px;color:var(--ink-faint)}
+.buybar__total{font-size:18px;font-weight:700;color:var(--brand-strong);font-family:var(--mono)}
+.main--cashier{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 82px)}
+
+/* 底部导航 */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:32;height:calc(var(--nav-h) + env(safe-area-inset-bottom));
+  padding-bottom:env(safe-area-inset-bottom);display:flex;background:rgba(255,255,255,.97);
+  backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+.nav__item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  color:var(--ink-faint);font-size:11px;font-weight:550;background:none;border:none;cursor:pointer;padding:0}
+.nav__item.is-active{color:var(--brand)}
+.nav__icon{font-size:17px;line-height:1}
+
+/* 抽屉 / 弹窗 */
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:50;max-height:88vh;background:var(--surface);
+  border-radius:var(--r-lg) var(--r-lg) 0 0;box-shadow:var(--shadow-lg);transform:translateY(105%);
+  transition:transform .22s ease;display:flex;flex-direction:column;
+  padding-bottom:env(safe-area-inset-bottom)}
+.sheet.is-open{transform:translateY(0)}
+.sheet__head{display:flex;align-items:center;gap:8px;padding:13px 15px;border-bottom:1px solid var(--line)}
+.sheet__title{font-size:16px;font-weight:650}
+.sheet__body{flex:1;overflow-y:auto;padding:11px 15px;min-height:60px}
+.sheet__foot{padding:11px 15px;border-top:1px solid var(--line);background:#fbfcfe}
+.x{margin-left:auto;border:none;background:transparent;font-size:22px;line-height:1;
+  color:var(--ink-faint);cursor:pointer;padding:5px 9px;border-radius:8px}
+.scrim{position:fixed;inset:0;z-index:49;background:rgba(23,30,40,.45);display:none}
+.scrim.is-open{display:block}
+
+/* 弹窗：内容再长也绝不能把底部按钮顶出屏幕。
+   已知问题：移动端虚拟键盘与地址栏会改变可视高度，仅用 100vh 计算会把底栏挤出视口。
+   因此底栏不依赖 flex 高度计算，并配合 safe-area 内边距双重保障。 */
+.modal{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;
+  padding:10px;background:rgba(23,30,40,.45);overflow:hidden}
+.modal.is-open{display:flex}
+.modal__box{background:var(--surface);border:1px solid var(--line-strong);
+  border-radius:var(--r-lg);box-shadow:var(--shadow-lg);
+  width:100%;overflow:hidden;position:relative;
+  max-height:88vh;max-height:calc(100vh - 20px);max-height:calc(100dvh - 20px);
+  display:flex;flex-direction:column}
+.modal__head{padding:12px 15px;border-bottom:1px solid var(--line);display:flex;align-items:center;
+  gap:9px;flex:0 0 auto;background:var(--surface)}
+.modal__head::before{content:"";position:absolute;top:6px;left:50%;transform:translateX(-50%);
+  width:38px;height:4px;border-radius:999px;background:var(--line-strong)}
+.modal__body{padding:14px 15px;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  flex:1 1 auto;min-height:0;
+  /* 正文区底部预留额外空间：否则最后一行控件会紧贴底栏，视觉上像是被截断 */
+  padding-bottom:26px}
+.modal__body>*:last-child{margin-bottom:2px}
+.modal__foot{flex:0 0 auto;padding:11px 15px;
+  padding-bottom:calc(11px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--line);display:flex;gap:9px;flex-wrap:wrap;
+  background:#fbfcfe;box-shadow:0 -6px 14px rgba(29,36,48,.07)}
+.modal__foot .btn{flex:1;min-width:88px}
+/* 内容可滚动时给一个视觉提示：否则用户会误以为下方内容已被截断 */
+.modal__box.is-scrollable .modal__head{position:relative}
+.modal__box.is-scrollable .modal__head::after{content:"";position:absolute;left:0;right:0;bottom:-10px;
+  height:10px;pointer-events:none;
+  background:linear-gradient(rgba(29,36,48,.10),transparent)}
+
+/* 金额阶梯 */
+.steps{display:flex;flex-direction:column;gap:6px}
+.steps__row{display:flex;justify-content:space-between;gap:11px;align-items:baseline;font-size:13.5px}
+.steps__label{color:var(--ink-soft)}
+.steps__value{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.steps__row--cut .steps__value{color:var(--ok)}
+.steps__row--total{border-top:1px dashed var(--line-strong);margin-top:3px;padding-top:9px;
+  font-size:16.5px;font-weight:700}
+.steps__row--total .steps__value{color:var(--brand-strong);font-size:19px}
+.saving{margin-top:7px;font-size:12.5px;color:var(--ok);background:var(--ok-soft);
+  border-radius:8px;padding:5px 9px;display:inline-block}
+
+/* 购物车行 */
+.cart-line{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line)}
+.cart-line:last-child{border-bottom:none}
+.cart-line__main{flex:1;min-width:0}
+.cart-line__name{font-size:13.5px;font-weight:550;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cart-line__sub{font-size:12px;color:var(--ink-soft)}
+.stepper{display:flex;align-items:center;gap:1px;background:#f2f5f9;border-radius:999px;padding:2px;flex:none}
+.stepper button{width:34px;height:34px;border:none;background:transparent;border-radius:50%;
+  font-size:17px;line-height:1;color:var(--brand-strong);cursor:pointer;display:grid;place-items:center}
+.stepper button:active{background:#e5ecf4}
+.stepper__num{min-width:28px;text-align:center;font-family:var(--mono);font-weight:650;font-size:14px}
+
+/* 统计卡 */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:9px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;
+  box-shadow:0 1px 2px rgba(29,36,48,.05)}
+.stat__label{font-size:12px;color:var(--ink-faint)}
+.stat__value{font-size:22px;font-weight:700;font-family:var(--mono);font-variant-numeric:tabular-nums;
+  letter-spacing:-.4px;margin-top:1px;word-break:break-all}
+.stat__value small{font-size:12px;font-weight:550;color:var(--ink-soft)}
+.stat--brand .stat__value{color:var(--brand-strong)}
+.stat--ok .stat__value{color:var(--ok)}
+.stat--danger .stat__value{color:var(--danger)}
+
+/* 条形图 */
+.bars{display:flex;flex-direction:column;gap:9px}
+.bar__top{display:flex;justify-content:space-between;gap:9px;font-size:13px}
+.bar__label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar__value{font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);flex:none}
+.bar__track{height:8px;border-radius:999px;background:#eef1f6;overflow:hidden;margin-top:4px}
+.bar__fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--brand),#7fb4d8);min-width:2px}
+
+/* 列表行 */
+.list{display:flex;flex-direction:column}
+.item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:none}
+.item__main{flex:1;min-width:0}
+.item__title{font-size:14px;font-weight:550;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item__sub{font-size:12px;color:var(--ink-soft)}
+.item__amount{font-family:var(--mono);font-weight:650;font-size:14px;flex:none}
+.item.is-voided .item__title,.item.is-voided .item__amount{text-decoration:line-through;color:var(--ink-faint)}
+.item__thumb{width:44px;height:44px;flex:none;border-radius:9px;overflow:hidden;
+  background:var(--brand-soft);display:grid;place-items:center;font-weight:700;color:var(--brand)}
+.item__thumb img{width:100%;height:100%;object-fit:cover}
+
+/* 提示条 */
+.notice{border-radius:var(--r-sm);padding:9px 11px;font-size:13px}
+.notice--danger{background:var(--danger-soft);color:#8f3733}
+.notice--warn{background:var(--warn-soft);color:#7a5410}
+.notice--brand{background:var(--brand-soft);color:var(--brand-strong)}
+.notice--ok{background:var(--ok-soft);color:#1f6650}
+
+/* toast */
+.toasts{position:fixed;left:50%;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 16px);
+  transform:translateX(-50%);z-index:90;display:flex;flex-direction:column;gap:7px;
+  align-items:center;width:min(92vw,440px);pointer-events:none}
+.toast{background:#2b333f;color:#fff;padding:9px 15px;border-radius:999px;box-shadow:var(--shadow);
+  font-size:13.5px;max-width:100%;animation:tin .15s ease-out}
+.toast--error{background:var(--danger)}.toast--ok{background:var(--ok)}
+@keyframes tin{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+
+/* 空状态 */
+.empty{text-align:center;padding:34px 16px;color:var(--ink-faint)}
+.empty__icon{font-size:31px;display:block;margin-bottom:8px}
+.empty__title{font-weight:600;color:var(--ink-soft);margin-bottom:3px}
+
+/* 详情折叠 */
+details.disclosure{border:1px dashed var(--line-strong);border-radius:var(--r-sm);background:#fff;margin-bottom:10px}
+details.disclosure>summary{padding:10px 12px;font-size:13.5px;font-weight:550;cursor:pointer;
+  display:flex;align-items:center;gap:7px;list-style:none}
+details.disclosure>summary::-webkit-details-marker{display:none}
+details.disclosure>summary::before{content:"▸";color:var(--ink-faint);font-size:10px}
+details.disclosure[open]>summary::before{content:"▾"}
+.disclosure__body{padding:0 12px 12px;display:flex;flex-direction:column;gap:9px}
+hr.sep{border:none;border-top:1px solid var(--line);margin:3px 0;width:100%}
+
+/* 图片选择 */
+.thumb{width:80px;height:80px;flex:none;border:1px dashed var(--line-strong);border-radius:var(--r-sm);
+  background:#fafbfd;display:grid;place-items:center;overflow:hidden;font-size:11.5px;
+  color:var(--ink-faint);text-align:center;padding:3px}
+.thumb img{width:100%;height:100%;object-fit:cover;border-radius:8px}
+
+/* 阶梯/套装行 */
+.tier-row{display:flex;align-items:center;gap:6px}
+.tier-row .input{min-height:38px;padding:5px 8px;text-align:right}
+.bundle-card{border:1px solid var(--line);border-radius:var(--r-sm);padding:11px;background:#fbfcfe}
+.bundle-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;max-height:150px;overflow-y:auto}
+.bundle-chip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line-strong);
+  background:#fff;border-radius:999px;padding:5px 11px 5px 8px;font-size:12.5px;min-height:34px}
+.bundle-chip input{accent-color:var(--brand);margin:0}
+.bundle-chip:has(input:checked){border-color:var(--brand);background:var(--brand-soft);
+  color:var(--brand-strong);font-weight:550}
+
+.receipt__hero{text-align:center;padding:12px 0 15px;border-radius:var(--r);background:var(--brand-soft);
+  margin-bottom:13px}
+.receipt__hero.is-voided{background:var(--danger-soft)}
+.receipt__label{font-size:12.5px;color:var(--ink-soft)}
+.receipt__amount{font-size:36px;font-weight:700;color:var(--brand-strong);letter-spacing:-1px;
+  font-family:var(--mono);line-height:1.2}
+.receipt__hero.is-voided .receipt__amount{color:var(--danger);text-decoration:line-through}
+.receipt__saving{font-size:12.5px;color:var(--ok)}
+
+@media print{.nav,.buybar,.header,.toasts,.modal,.scrim,.sheet{display:none!important}
+  body{background:#fff}.main{padding:0}.card{box-shadow:none;break-inside:avoid}}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header__logo">摊</div>
+  <div class="header__title" id="hdr-title">我的小摊</div>
+  <button class="badge badge--brand header__session" id="hdr-session" type="button">这一场</button>
+</header>
+
+<main class="main" id="main">
+  <section class="view is-active" id="view-cashier"></section>
+  <section class="view" id="view-goods"></section>
+  <section class="view" id="view-stock"></section>
+  <section class="view" id="view-stats"></section>
+  <section class="view" id="view-more"></section>
+</main>
+
+<nav class="nav" id="nav"></nav>
+
+<div class="scrim" id="scrim"></div>
+
+<aside class="sheet" id="cart-sheet">
+  <div class="sheet__head">
+    <span class="sheet__title">本单</span>
+    <span class="muted small" id="cart-count">0 件</span>
+    <button class="x" type="button" data-close-sheet>×</button>
+  </div>
+  <div class="sheet__body" id="cart-body"></div>
+  <div class="sheet__foot">
+    <div id="cart-steps" class="mt-6" style="margin-bottom:10px"></div>
+    <details class="disclosure" id="discount-box">
+      <summary><span>优惠设置</span><span class="badge hidden" id="discount-badge"></span></summary>
+      <div class="disclosure__body" id="discount-body"></div>
+    </details>
+    <button class="btn btn--primary btn--lg btn--block" id="btn-checkout" type="button" disabled>结算</button>
+  </div>
+</aside>
+
+<aside class="sheet" id="session-sheet">
+  <div class="sheet__head">
+    <span class="sheet__title">场次</span>
+    <button class="x" type="button" data-close-sheet>×</button>
+  </div>
+  <div class="sheet__body" id="session-body"></div>
+</aside>
+
+<div class="modal" id="modal"><div class="modal__box" id="modal-box"></div></div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+"use strict";
+/* ===========================================================================
+   出摊计算器 · 手机版
+   纯前端离线应用：没有服务器、不联网，数据存在这台手机里。
+
+   和电脑版共用同一套账目口径（这是刻意保持一致的，两边算出来的数必须一样）：
+     · 金额一律用「分」做整数运算，绝不用浮点存钱
+     · 库存用流水推导：初始 + 补货 + 盘点 + 销售净额(含撤销回补)
+     · 成交价按「下单那一刻的商品现价」快照，之后改价不影响历史单
+     · 折扣顺序：单品/套装 → 比例折扣 → 满减 → 尾数取整
+     · 实收是最终定价，优惠金额由「原价 − 实收」反推，保证恒等式成立
+     · 撤销是软撤销（标记状态 + 库存回补），不删数据、不记负数冲账单
+     · 场次用「开场时的最后一条流水号」当边界，不用时间戳（秒级精度会算错）
+   =========================================================================== */
+
+/* ------------------------------------------------------------------ 小工具 */
+const M = (function () {
+  function money(cents) {
+    const n = Math.round(Number(cents) || 0);
+    const sign = n < 0 ? "-" : "";
+    const abs = Math.abs(n);
+    return sign + Math.floor(abs / 100) + "." + String(abs % 100).padStart(2, "0");
+  }
+  function toCents(text) {
+    const v = parseFloat(String(text == null ? "" : text).trim());
+    if (!isFinite(v) || v < 0) return null;
+    return Math.round(v * 100);
+  }
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+  function nums(n) { return Number(n || 0).toLocaleString("zh-CN"); }
+  /* 本地时间，口径和电脑版一致（电脑版用的就是不带时区的本地时间） */
+  function now() {
+    const d = new Date();
+    const p = (x) => String(x).padStart(2, "0");
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " +
+           p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
+  }
+  function today() { return now().slice(0, 10); }
+  function hm(ts) { return String(ts || "").slice(11, 16); }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function rate(gross, final) {
+    if (!gross) return "—";
+    let t = (final / gross * 10).toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+    return t + "折";
+  }
+  const ROUNDING = {
+    cent: "精确到分", jiao: "抹零到角", yuan_up: "凑整到元（向上）", yuan_down: "抹零到元",
+  };
+  function round(cents, mode) {
+    if (cents <= 0) return Math.max(0, Math.round(cents));
+    if (mode === "jiao") return Math.floor(cents / 10) * 10;
+    if (mode === "yuan_down") return Math.floor(cents / 100) * 100;
+    if (mode === "yuan_up") return Math.ceil(cents / 100) * 100;
+    return Math.round(cents);
+  }
+  function download(filename, text, mime) {
+    const blob = new Blob([text], { type: mime || "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+  function csv(filename, rows) {
+    const cell = (c) => {
+      const t = String(c == null ? "" : c);
+      return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+    };
+    // 加 BOM，Excel 打开中文不乱码
+    download(filename, "\ufeff" + rows.map((r) => r.map(cell).join(",")).join("\r\n"),
+             "text/csv;charset=utf-8;");
+  }
+  return { money, toCents, esc, nums, now, today, hm, uid, rate, round, ROUNDING, download, csv };
+})();
+
+/* ------------------------------------------------------------------ 计价引擎 */
+const Pricing = (function () {
+  const M$ = M;
+
+  function normalizeTiers(raw) {
+    const best = new Map();
+    (raw || []).forEach((t) => {
+      const threshold = Math.max(0, parseInt(t && (t.threshold_cents != null
+        ? t.threshold_cents : M$.toCents(t && t.threshold_yuan)), 10) || 0);
+      const cut = Math.max(0, parseInt(t && (t.cut_cents != null
+        ? t.cut_cents : M$.toCents(t && t.cut_yuan)), 10) || 0);
+      if (threshold <= 0) return;
+      const old = best.get(threshold);
+      if (!old || cut > old.cut_cents) best.set(threshold, { threshold_cents: threshold, cut_cents: cut });
+    });
+    return Array.from(best.values()).sort((a, b) => a.threshold_cents - b.threshold_cents);
+  }
+
+  /* 多档同时满足 → 取对客人最有利的那一档（不是累加，也不是匹配第一档） */
+  function pickTier(subtotal, tiers) {
+    let best = null;
+    normalizeTiers(tiers).forEach((t) => {
+      if (subtotal >= t.threshold_cents && (!best || t.cut_cents > best.cut_cents)) best = t;
+    });
+    return best;
+  }
+
+  function normalizeBundles(raw) {
+    return (raw || []).map((b) => ({
+      name: String((b && b.name) || "套装").trim() || "套装",
+      product_ids: ((b && b.product_ids) || []).map(Number),
+      qty: Math.max(2, parseInt(b && b.qty, 10) || 2),
+      price_cents: Math.max(0, parseInt(b && b.price_cents, 10) || 0),
+    })).filter((b) => b.product_ids.length && b.price_cents >= 0);
+  }
+
+  /* 单个套装能省多少。件数是「同一套装下所有商品合并计数」——
+     「任意 3 件 20 元」是跨商品的，2 个 A + 1 个 B 也算 3 件。 */
+  function bundleCut(bundle, contributions) {
+    const units = [];
+    let total = 0;
+    Object.keys(contributions).forEach((pid) => {
+      const c = contributions[pid];
+      total += c.qty;
+      for (let i = 0; i < c.qty; i++) units.push(c.price);
+    });
+    const groups = Math.floor(total / bundle.qty);
+    if (groups <= 0) return 0;
+    units.sort((a, b) => b - a);                       // 优先把贵的放进套装，客人省最多
+    const used = units.slice(0, groups * bundle.qty);
+    const normally = used.reduce((s, x) => s + x, 0);
+    return Math.max(0, normally - groups * bundle.price_cents);
+  }
+
+  /* 把套装优惠按「被覆盖件数 × 单价」分摊回各行。
+     最后一行吃掉零头，保证分项加起来正好等于总额。 */
+  function bundleBreakdown(lines, bundles) {
+    if (!bundles.length || !lines.length) return { total: 0, rows: [], labels: [] };
+    const byProduct = new Map();
+    lines.forEach((l) => {
+      const old = byProduct.get(l.product_id);
+      byProduct.set(l.product_id, {
+        qty: (old ? old.qty : 0) + l.qty, price: l.unit_price_cents,
+      });
+    });
+
+    let total = 0; const labels = []; const pool = new Map();
+    bundles.forEach((bundle) => {
+      const contrib = {};
+      byProduct.forEach((v, pid) => { if (bundle.product_ids.includes(pid)) contrib[pid] = v; });
+      if (!Object.keys(contrib).length) return;
+      const cut = bundleCut(bundle, contrib);
+      if (cut <= 0) return;
+      total += cut; labels.push(bundle.name);
+
+      const units = [];
+      Object.keys(contrib).forEach((pid) => {
+        for (let i = 0; i < contrib[pid].qty; i++) units.push([Number(pid), contrib[pid].price]);
+      });
+      units.sort((a, b) => b[1] - a[1]);
+      const need = Math.floor(units.length / bundle.qty) * bundle.qty;
+      units.slice(0, need).forEach(([pid]) => pool.set(pid, (pool.get(pid) || 0) + 1));
+    });
+    if (total <= 0) return { total: 0, rows: [], labels: [] };
+
+    const weights = [];
+    let weightTotal = 0;
+    lines.forEach((l) => {
+      const covered = Math.min(l.qty, pool.get(l.product_id) || 0);
+      const w = covered * l.unit_price_cents;
+      if (w > 0) { weights.push([l, w]); weightTotal += w; }
+    });
+    if (weightTotal <= 0) return { total: 0, rows: [], labels: [] };
+
+    const rows = []; let allocated = 0;
+    weights.forEach(([l, w], i) => {
+      const share = (i === weights.length - 1) ? total - allocated
+                                               : Math.round(total * w / weightTotal);
+      if (i !== weights.length - 1) allocated += share;
+      if (share > 0) rows.push({
+        product_id: l.product_id, name: l.name,
+        label: labels.length === 1 ? labels[0] : labels.join("＋"), cut_cents: share,
+      });
+    });
+    return { total, rows, labels };
+  }
+
+  /* 单品优惠：第二件半价 / 第 N 件 X 折。
+     注意 discount_percent 的口径是「折」：5 = 5 折（收 50%），全项目统一。 */
+  function lineCut(line) {
+    const nth = Math.max(2, parseInt(line.discount_nth, 10) || 2);
+    let percent;
+    if (line.discount_kind === "second_half") percent = 5;
+    else if (line.discount_kind === "nth_percent") percent = Number(line.discount_percent);
+    else return 0;
+    percent = Math.min(Math.max(percent * 10, 0), 100);
+    if (line.qty < nth || percent >= 100) return 0;
+    const groups = Math.floor(line.qty / nth);
+    return groups * Math.floor(line.unit_price_cents * (100 - percent) / 100);
+  }
+
+  /* 算一笔账。顺序固定：套装 → 单品 → 比例折扣 → 满减 → 尾数取整 */
+  function quote(lines, discount) {
+    const d = discount || {};
+    const bundles = normalizeBundles(d.bundles);
+    const live = lines.filter((l) => l.qty > 0);
+    const gross = live.reduce((s, l) => s + l.unit_price_cents * l.qty, 0);
+    const itemCount = live.reduce((s, l) => s + l.qty, 0);
+
+    let itemDiscount = 0; const breakdown = [];
+    const bundle = bundleBreakdown(live, bundles);
+    itemDiscount += bundle.total;
+    breakdown.push.apply(breakdown, bundle.rows);
+
+    live.forEach((l) => {
+      const cut = lineCut(l);
+      if (cut <= 0) return;
+      itemDiscount += cut;
+      let label = "指定商品优惠";
+      if (l.discount_kind === "second_half") label = "第二件半价";
+      else if (l.discount_kind === "nth_percent") {
+        label = "第 " + Math.max(2, parseInt(l.discount_nth, 10) || 2) + " 件 " +
+                Number(l.discount_percent) + " 折";
+      }
+      breakdown.push({ product_id: l.product_id, name: l.name, label, cut_cents: cut });
+    });
+    itemDiscount = Math.min(itemDiscount, gross);
+    const afterItems = gross - itemDiscount;
+
+    let percentCut = 0;
+    const percentValue = Number(d.percent_value == null ? 10 : d.percent_value);
+    if (d.percent_enabled) {
+      const p = Math.min(Math.max(percentValue, 0), 10);
+      percentCut = Math.floor(afterItems * (10 - p) / 10);
+    }
+    const afterPercent = afterItems - percentCut;
+
+    let thresholdCut = 0, appliedTier = null;
+    if (d.threshold_enabled) {
+      appliedTier = pickTier(afterPercent, d.tiers);
+      if (appliedTier) thresholdCut = Math.min(appliedTier.cut_cents, afterPercent);
+    }
+
+    const beforeRounding = Math.max(0, afterPercent - thresholdCut);
+    const finalCents = M$.round(beforeRounding, d.rounding_mode || "cent");
+    const discountTotal = gross - finalCents;      // 反推，保证恒等式
+    const roundingDiff = beforeRounding - finalCents;
+
+    const stages = [{ key: "gross", label: "原价", amount_cents: gross }];
+    if (itemDiscount) {
+      const labels = breakdown.map((x) => x.label).filter((v, i, a) => a.indexOf(v) === i);
+      stages.push({ key: "item", label: labels.length === 1 ? labels[0] : "指定商品优惠",
+                    amount_cents: -itemDiscount });
+    }
+    if (percentCut) stages.push({ key: "percent", label: "比例折扣 " + percentValue + "折",
+                                  amount_cents: -percentCut });
+    if (thresholdCut) stages.push({
+      key: "threshold",
+      label: "满 " + (appliedTier.threshold_cents / 100) + " 减 " + (appliedTier.cut_cents / 100),
+      amount_cents: -thresholdCut });
+    if (roundingDiff) stages.push({ key: "rounding", label: M$.ROUNDING[d.rounding_mode] || "尾数取整",
+                                    amount_cents: -roundingDiff });
+    stages.push({ key: "final", label: "实收", amount_cents: finalCents });
+
+    return {
+      gross_cents: gross, item_discount_cents: itemDiscount, item_breakdown: breakdown,
+      percent_cut_cents: percentCut, threshold_cut_cents: thresholdCut,
+      discount_cents: discountTotal, final_cents: finalCents,
+      rounding_diff_cents: roundingDiff, applied_tier: appliedTier, item_count: itemCount,
+      stacked: !!(d.percent_enabled && d.threshold_enabled && thresholdCut),
+      confirm_required: !!(d.percent_enabled || d.threshold_enabled), stages,
+      effective_rate: M$.rate(gross, finalCents),
+    };
+  }
+
+  return { quote, pickTier, normalizeTiers, normalizeBundles, bundleBreakdown };
+})();
+
+/* ------------------------------------------------------------------ 存储层 */
+const Store = (function () {
+  const KEY = "stallcalc.phone.v1";
+  let memoryOnly = false;
+  let memory = null;
+
+  function blank() {
+    return {
+      version: 1,
+      settings: {
+        stall_name: "我的小摊", percent_value: 10, rounding_mode: "cent",
+        threshold_tiers: [{ threshold_cents: 10000, cut_cents: 1000 }],
+        bundle_rules: [], low_stock_alert: 3, allow_negative_stock: false,
+      },
+      products: [], sessions: [], transactions: [], ledger: [],
+      seq: { product: 0, session: 0, transaction: 0, ledger: 0 },
+      cart: [], lastDiscount: null,
+    };
+  }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return blank();
+      const data = JSON.parse(raw);
+      const base = blank();
+      // 缺字段就补上，避免老版本数据把新代码搞崩
+      Object.keys(base).forEach((k) => { if (data[k] === undefined) data[k] = base[k]; });
+      Object.keys(base.settings).forEach((k) => {
+        if (data.settings[k] === undefined) data.settings[k] = base.settings[k];
+      });
+      return data;
+    } catch (e) {
+      memoryOnly = true;
+      return memory || blank();
+    }
+  }
+
+  function save(state) {
+    if (memoryOnly) { memory = state; return { ok: true, memoryOnly: true }; }
+    try {
+      localStorage.setItem(KEY, JSON.stringify(state));
+      return { ok: true, memoryOnly: false };
+    } catch (e) {
+      // 存不下最常见的原因：图片太多把配额撑满了
+      memory = state;
+      memoryOnly = true;
+      return { ok: false, memoryOnly: true, error: String(e && e.message || e) };
+    }
+  }
+
+  function clear() {
+    try { localStorage.removeItem(KEY); } catch (e) { /* 忽略 */ }
+    memory = null;
+  }
+
+  function usage() {
+    try {
+      const raw = localStorage.getItem(KEY) || "";
+      // localStorage 存的是 UTF-16，按 2 字节估
+      return { bytes: raw.length * 2, limit: 5 * 1024 * 1024, memoryOnly };
+    } catch (e) { return { bytes: 0, limit: 0, memoryOnly: true }; }
+  }
+
+  /* 开机自检：用真读写验一遍，而不是问浏览器「你支持吗」。
+     为什么必须自检：从文件（file://）打开时，各家浏览器对本地存储的态度不一样，
+     有的直接禁用。禁用了还照常记账，摊主一关页面数据就没了——这个后果太严重，
+     所以必须主动测出来并明确告诉他。 */
+  function selfCheck() {
+    const probeKey = KEY + ".probe";
+    try {
+      localStorage.setItem(probeKey, "1");
+      const readBack = localStorage.getItem(probeKey);
+      localStorage.removeItem(probeKey);
+      if (readBack !== "1") {
+        return { ok: false, reason: "写入后读不回来" };
+      }
+      memoryOnly = false;
+      return { ok: true };
+    } catch (e) {
+      memoryOnly = true;
+      return { ok: false, reason: String((e && e.name) || e) + "：" + String((e && e.message) || e) };
+    }
+  }
+
+  return { KEY, blank, load, save, clear, usage, selfCheck, isMemoryOnly: () => memoryOnly };
+})();
+
+/* ------------------------------------------------------------------ 业务层 */
+const Biz = (function () {
+  let S = Store.load();
+  let saveTimer = null;
+
+  function persist(now) {
+    const result = Store.save(S);
+    if (!result.ok && !persist.warned) {
+      persist.warned = true;
+      UI.toast("手机存储空间不够了，请去「更多 → 导出备份」先把数据存出来", "error");
+    }
+    return result;
+  }
+  function touch() {                       // 写操作后统一落盘，顺手提示存不下
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = null;
+    return persist();
+  }
+  function state() { return S; }
+
+  function nextId(kind) {
+    S.seq[kind] = (S.seq[kind] || 0) + 1;
+    return S.seq[kind];
+  }
+
+  /* ---------------- 商品 ---------------- */
+  /* 库存的唯一口径：初始 + 补货 + 盘点 + 销售净额。
+     「销售净额」= 所有 sale 与 void_return 流水之和——已撤销的单，-qty 和 +qty
+     天然抵消，不需要特判。
+     这里踩过两个坑，记在这儿免得重犯：
+       1. 只加补货、忘了减销售 → 库存永远显示满货；
+       2. 减「已完成单的销售」再加「撤销回补」→ 单据一变成 voided，销售那笔被排除、
+          回补那笔仍然加上，库存凭空翻倍。 */
+  function productStock(productId) {
+    const p = S.products.find((x) => x.id === productId);
+    if (!p) return 0;
+    let stock = p.stock_initial || 0;
+    S.ledger.forEach((e) => {
+      if (e.product_id !== productId) return;
+      if (e.reason === "restock" || e.reason === "adjust") stock += e.change_qty;
+      else if (e.reason === "sale" || e.reason === "void_return") stock += e.change_qty;
+    });
+    return stock;
+  }
+
+  function productSold(productId) {
+    // 只看未撤销的单，且用明细快照算（商品改名/改价都不影响历史）
+    let sold = 0;
+    S.transactions.forEach((tx) => {
+      if (tx.status !== "completed") return;
+      (tx.items || []).forEach((it) => { if (it.product_id === productId) sold += it.qty; });
+    });
+    return sold;
+  }
+
+  function productView(p) {
+    const stock = productStock(p.id);
+    const alert = p.low_stock_alert == null ? 3 : p.low_stock_alert;
+    let label = "";
+    if (p.discount_kind === "second_half") label = "第二件半价";
+    else if (p.discount_kind === "nth_percent") {
+      label = "第 " + p.discount_nth + " 件 " + p.discount_percent + " 折";
+    }
+    return Object.assign({}, p, {
+      stock_current: stock, sold: productSold(p.id),
+      low_stock: !!p.is_active && stock <= alert,
+      price_display: M.money(p.price_cents), discount_label: label,
+    });
+  }
+
+  function listProducts(onlyActive) {
+    return S.products
+      .filter((p) => (onlyActive ? p.is_active : true))
+      .slice()
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.id - b.id)
+      .map(productView);
+  }
+
+  function categories() {
+    const set = [];
+    S.products.forEach((p) => {
+      const c = (p.category || "未分类").trim() || "未分类";
+      if (set.indexOf(c) < 0) set.push(c);
+    });
+    return set.sort();
+  }
+
+  function saveProduct(data) {
+    if (!data.name || !String(data.name).trim()) return { ok: false, error: "商品名称不能为空" };
+    const price = parseInt(data.price_cents, 10);
+    if (!isFinite(price) || price < 0) return { ok: false, error: "单价要填个不小于 0 的数字" };
+    const initial = Math.max(0, parseInt(data.stock_initial, 10) || 0);
+    const alert = Math.max(0, parseInt(data.low_stock_alert, 10) || 0);
+    const kind = data.discount_kind || "none";
+    if (["none", "second_half", "nth_percent"].indexOf(kind) < 0) {
+      return { ok: false, error: "不认识的优惠类型" };
+    }
+    const percent = Number(data.discount_percent == null ? 5 : data.discount_percent);
+    if (kind !== "none" && !(percent > 0 && percent < 10)) {
+      return { ok: false, error: "折扣值要在 0 到 10 之间（5 = 5 折）" };
+    }
+    const now = M.now();
+    if (data.id) {
+      const old = S.products.find((p) => p.id === data.id);
+      if (!old) return { ok: false, error: "这个商品不存在" };
+      Object.assign(old, {
+        name: String(data.name).trim(),
+        category: (data.category || "").trim() || "未分类",
+        price_cents: price, low_stock_alert: alert, sort_order: data.sort_order || 0,
+        is_active: data.is_active !== false,
+        discount_kind: kind,
+        discount_nth: Math.max(2, parseInt(data.discount_nth, 10) || 2),
+        discount_percent: isFinite(percent) ? percent : 5,
+        image: data.image !== undefined ? data.image : old.image,
+        updated_at: now,
+      });
+      // 改「初始库存」：直接改基准值，当前库存跟着平移
+      // （注意别同时再写一条盘点流水，否则同一个增量会算两遍）
+      if (data.stock_initial !== undefined) old.stock_initial = initial;
+      touch();
+      return { ok: true, product: productView(old) };
+    }
+    const product = {
+      id: nextId("product"), name: String(data.name).trim(),
+      category: (data.category || "").trim() || "未分类",
+      price_cents: price, stock_initial: initial, low_stock_alert: alert,
+      sort_order: data.sort_order || 0, is_active: data.is_active !== false,
+      discount_kind: kind,
+      discount_nth: Math.max(2, parseInt(data.discount_nth, 10) || 2),
+      discount_percent: isFinite(percent) ? percent : 5,
+      image: data.image || null, created_at: now, updated_at: now,
+    };
+    S.products.push(product);
+    if (initial > 0) {
+      S.ledger.push({
+        id: nextId("ledger"), product_id: product.id, change_qty: initial,
+        reason: "initial", transaction_id: null, stock_after: initial, created_at: now,
+      });
+    }
+    touch();
+    return { ok: true, product: productView(product) };
+  }
+
+  function deleteProduct(id) {
+    const p = S.products.find((x) => x.id === id);
+    if (!p) return { ok: false, error: "这个商品不存在" };
+    S.products = S.products.filter((x) => x.id !== id);
+    S.ledger = S.ledger.filter((e) => e.product_id !== id);
+    S.transactions.forEach((tx) => (tx.items || []).forEach((it) => {
+      if (it.product_id === id) it.product_id = null;      // 历史单据保留快照
+    }));
+    touch();
+    return { ok: true };
+  }
+
+  function restock(id, qty) {
+    const p = S.products.find((x) => x.id === id);
+    if (!p) return { ok: false, error: "这个商品不存在" };
+    const n = parseInt(qty, 10);
+    if (!isFinite(n) || n === 0) return { ok: false, error: "数量得是个不为 0 的整数" };
+    const stock = productStock(id);
+    if (stock + n < 0) return { ok: false, error: "剩余只有 " + stock + " 件，减不到 " + Math.abs(n) + " 件" };
+    const now = M.now();
+    S.ledger.push({
+      id: nextId("ledger"), product_id: id, change_qty: n, reason: "restock",
+      transaction_id: null, stock_after: stock + n, created_at: now,
+    });
+    touch();
+    return { ok: true, product: productView(p) };
+  }
+
+  function productLedger(id, limit) {
+    const labels = { initial: "上架初始", restock: "补货", sale: "售出",
+                     void_return: "撤销回补", adjust: "盘点修正" };
+    return S.ledger.filter((e) => e.product_id === id)
+      .sort((a, b) => b.id - a.id).slice(0, limit || 60)
+      .map((e) => {
+        const tx = e.transaction_id ? S.transactions.find((t) => t.id === e.transaction_id) : null;
+        return Object.assign({}, e, {
+          reason_label: labels[e.reason] || e.reason,
+          tx_voided: !!(tx && tx.status === "voided"),
+        });
+      });
+  }
+
+  /* ---------------- 场次 ---------------- */
+  function activeSession() {
+    const list = S.sessions.filter((s) => s.is_active);
+    return list.length ? list[list.length - 1] : null;
+  }
+
+  function ensureSession() {
+    let cur = activeSession();
+    if (cur) return cur;
+    const now = M.now();
+    cur = {
+      id: nextId("session"), name: M.today() + " 出摊", started_at: now, ended_at: null,
+      note: "首次使用时自动创建", is_active: true, opening_ledger_id: maxLedgerId(),
+    };
+    S.sessions.push(cur);
+    touch();
+    return cur;
+  }
+
+  function maxLedgerId() {
+    return S.ledger.reduce((m, e) => Math.max(m, e.id || 0), 0);
+  }
+
+  function startSession(name, note) {
+    const now = M.now();
+    S.sessions.forEach((s) => {
+      if (s.is_active) { s.is_active = false; s.ended_at = s.ended_at || now; }
+    });
+    const clean = String(name || "").trim() || (M.today() + " 出摊");
+    if (clean.length > 40) return { ok: false, error: "场次名称太长了（最多 40 字）" };
+    const session = {
+      id: nextId("session"), name: clean, started_at: now, ended_at: null,
+      note: String(note || "").trim() || null, is_active: true,
+      opening_ledger_id: maxLedgerId(),
+    };
+    S.sessions.push(session);
+    touch();
+    return { ok: true, session };
+  }
+
+  function closeSession(id) {
+    const s = S.sessions.find((x) => x.id === id);
+    if (!s) return { ok: false, error: "这一场不存在" };
+    if (!s.is_active) return { ok: false, error: "「" + s.name + "」已经收过摊了" };
+    s.is_active = false;
+    s.ended_at = M.now();
+    touch();
+    return { ok: true, session: s };
+  }
+
+  function listSessions() {
+    return S.sessions.slice().sort((a, b) => {
+      if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+      return String(b.started_at).localeCompare(String(a.started_at));
+    });
+  }
+
+  /* 场次库存：都用「流水号」当边界，不用时间戳做减法。
+     边界用时间戳的问题：同一秒内开场+上架+卖货会算错。 */
+  function sessionLines(sessionId) {
+    const s = S.sessions.find((x) => x.id === sessionId);
+    if (!s) return [];
+    const openingId = s.opening_ledger_id || 0;
+    const isOpen = s.is_active || !s.ended_at;
+
+    const opening = new Map(), inbound = new Map(), net = new Map();
+    S.ledger.forEach((e) => {
+      if (e.id <= openingId) {
+        opening.set(e.product_id, (opening.get(e.product_id) || 0) + e.change_qty);
+      } else if (e.reason === "restock" || e.reason === "adjust" || e.reason === "initial") {
+        inbound.set(e.product_id, (inbound.get(e.product_id) || 0) + e.change_qty);
+      }
+    });
+    S.ledger.forEach((e) => {
+      if (e.reason !== "sale" && e.reason !== "void_return") return;
+      const tx = S.transactions.find((t) => t.id === e.transaction_id);
+      if (!tx || tx.session_id !== sessionId) return;
+      net.set(e.product_id, (net.get(e.product_id) || 0) + e.change_qty);
+    });
+
+    return S.products.map((p) => {
+      const open = opening.get(p.id) || 0;
+      const add = inbound.get(p.id) || 0;
+      const n = net.get(p.id) || 0;
+      const sold = n < 0 ? -n : 0;
+      const brought = open + add;
+      const stock = isOpen ? productStock(p.id) : brought + n;
+      const view = productView(p);
+      return {
+        product_id: p.id, name: p.name, category: p.category,
+        price_cents: p.price_cents, price_display: view.price_display,
+        opening: open, restocked: add, brought, sold, remaining: stock,
+        low_stock: view.low_stock,
+        revenue_cents: sold * p.price_cents, revenue_display: M.money(sold * p.price_cents),
+      };
+    });
+  }
+
+  function sessionSummary(sessionId) {
+    const txs = S.transactions.filter((tx) => tx.session_id === sessionId);
+    const done = txs.filter((tx) => tx.status === "completed");
+    const orders = done.length;
+    const gross = done.reduce((a, t) => a + t.gross_cents, 0);
+    const discount = done.reduce((a, t) => a + t.discount_cents, 0);
+    const revenue = done.reduce((a, t) => a + t.final_cents, 0);
+    const items = done.reduce((a, t) => a + t.item_count, 0);
+    const lines = sessionLines(sessionId);
+    const brought = lines.reduce((a, l) => a + l.brought, 0);
+    const sold = lines.reduce((a, l) => a + l.sold, 0);
+    const remaining = lines.reduce((a, l) => a + l.remaining, 0);
+    const stockValue = lines.reduce((a, l) => a + l.remaining * l.price_cents, 0);
+    return {
+      orders, item_count: items, gross_cents: gross, discount_cents: discount,
+      revenue_cents: revenue,
+      gross_display: M.money(gross), discount_display: M.money(discount),
+      revenue_display: M.money(revenue),
+      avg_order_cents: orders ? Math.round(revenue / orders) : 0,
+      avg_order_display: M.money(orders ? Math.round(revenue / orders) : 0),
+      effective_rate: M.rate(gross, revenue),
+      total_brought: brought, total_sold: sold, total_remaining: remaining,
+      stock_value_cents: stockValue, stock_value_display: M.money(stockValue),
+      voided: txs.filter((t) => t.status === "voided").length,
+    };
+  }
+
+  /* ---------------- 交易 ---------------- */
+  function discountConfig() {
+    const s = S.settings;
+    return {
+      percent_enabled: !!(S.lastDiscount && S.lastDiscount.percent_enabled),
+      percent_value: (S.lastDiscount && S.lastDiscount.percent_value) || s.percent_value || 10,
+      threshold_enabled: !!(S.lastDiscount && S.lastDiscount.threshold_enabled),
+      rounding_mode: (S.lastDiscount && S.lastDiscount.rounding_mode) || s.rounding_mode || "cent",
+      tiers: (S.lastDiscount && S.lastDiscount.tiers) || s.threshold_tiers || [],
+      bundles: s.bundle_rules || [],
+    };
+  }
+
+  function setDiscount(patch) {
+    S.lastDiscount = Object.assign({}, discountConfig(), patch);
+    delete S.lastDiscount.bundles;
+    touch();
+  }
+
+  /* 购物车行 → 参与计价的行（单价快照取自商品当前价） */
+  function cartLines() {
+    return S.cart.map((c) => {
+      const p = S.products.find((x) => x.id === c.product_id);
+      if (!p) return null;
+      return {
+        product_id: p.id, name: p.name, unit_price_cents: p.price_cents, qty: c.qty,
+        discount_kind: p.discount_kind || "none",
+        discount_nth: p.discount_nth || 2,
+        discount_percent: p.discount_percent == null ? 5 : p.discount_percent,
+      };
+    }).filter(Boolean);
+  }
+
+  function cartTotals() {
+    const lines = cartLines();
+    if (!lines.length) return { count: 0, quote: null };
+    return {
+      count: lines.reduce((a, l) => a + l.qty, 0),
+      quote: Pricing.quote(lines, discountConfig()),
+    };
+  }
+
+  function addToCart(productId, maxQty) {
+    const p = S.products.find((x) => x.id === productId);
+    if (!p || !p.is_active) return { ok: false, error: "这个商品已下架" };
+    const stock = productStock(productId);
+    const line = S.cart.find((c) => c.product_id === productId);
+    const current = line ? line.qty : 0;
+    if (maxQty != null && current + 1 > maxQty) {
+      return { ok: false, overflow: true, stock };
+    }
+    if (line) line.qty += 1;
+    else S.cart.push({ product_id: productId, qty: 1 });
+    touch();
+    return { ok: true, stock };
+  }
+
+  function setCartQty(productId, qty) {
+    const n = Math.max(0, parseInt(qty, 10) || 0);
+    if (n <= 0) {
+      S.cart = S.cart.filter((c) => c.product_id !== productId);   // 减到 0 才移出购物车
+    } else {
+      const line = S.cart.find((c) => c.product_id === productId);
+      if (line) line.qty = n;
+      else S.cart.push({ product_id: productId, qty: n });
+    }
+    touch();
+    return { ok: true };
+  }
+
+  /* 允许超卖时直接加（摊主已经确认过「按实际卖出」） */
+  function addToCartForce(productId) {
+    const line = S.cart.find((c) => c.product_id === productId);
+    if (line) line.qty += 1;
+    else S.cart.push({ product_id: productId, qty: 1 });
+    touch();
+    return { ok: true };
+  }
+
+  function clearCart() { S.cart = []; touch(); }
+
+  function commitTransaction(opts) {
+    const options = opts || {};
+    const lines = cartLines();
+    if (!lines.length) return { ok: false, error: "购物车是空的" };
+    const cfg = discountConfig();
+    const q = Pricing.quote(lines, cfg);
+
+    // 库存校验：一次把所有缺货的都报出来，别让摊主一个个试
+    if (!options.allowNegative) {
+      const short = [];
+      lines.forEach((l) => {
+        const stock = productStock(l.product_id);
+        if (l.qty > stock) short.push("「" + l.name + "」只剩 " + stock + " 件，这单要 " + l.qty + " 件");
+      });
+      if (short.length) return { ok: false, error: "库存不足：" + short.join("；") };
+    }
+    let paid = options.paidCents;
+    if (paid != null && paid < q.final_cents) {
+      return { ok: false, error: "收到的钱（" + M.money(paid) + "）比应收（" +
+               M.money(q.final_cents) + "）还少，请确认金额" };
+    }
+    if (q.stacked && !options.confirmDiscount) {
+      return { ok: false, error: "叠加折扣需要先确认优惠明细" };
+    }
+
+    const now = M.now();
+    const session = activeSession();
+    const kinds = lines.map((l) => l.discount_kind).filter((k) => k && k !== "none");
+    const uniq = kinds.filter((v, i, a) => a.indexOf(v) === i);
+    const tx = {
+      id: nextId("transaction"), created_at: now,
+      session_id: session ? session.id : null,
+      gross_cents: q.gross_cents, discount_cents: q.discount_cents, final_cents: q.final_cents,
+      paid_cents: paid == null ? null : paid,
+      change_cents: paid == null ? null : paid - q.final_cents,
+      item_count: q.item_count, note: options.note || null, status: "completed",
+      voided_at: null, void_reason: null,
+      percent_enabled: !!cfg.percent_enabled, percent_value: Number(cfg.percent_value),
+      threshold_enabled: !!cfg.threshold_enabled,
+      item_discount_kind: uniq.length === 1 ? uniq[0] : (uniq.length ? "mixed" : "none"),
+      item_discount_cents: q.item_discount_cents,
+      threshold_cut_cents: q.threshold_cut_cents,
+      rounding_mode: cfg.rounding_mode,
+      items: lines.map((l) => ({
+        product_id: l.product_id, name: l.name,
+        unit_price_cents: l.unit_price_cents, qty: l.qty,
+      })),
+    };
+    S.transactions.push(tx);
+
+    // 扣库存：同一次操作里写流水，金额和库存不会各走一半
+    lines.forEach((l) => {
+      const stock = productStock(l.product_id);
+      S.ledger.push({
+        id: nextId("ledger"), product_id: l.product_id, change_qty: -l.qty, reason: "sale",
+        transaction_id: tx.id, stock_after: stock - l.qty, created_at: now,
+      });
+    });
+    S.cart = [];
+    touch();
+    return { ok: true, transaction: tx, quote: q };
+  }
+
+  function voidTransaction(txId, reason) {
+    const tx = S.transactions.find((t) => t.id === txId);
+    if (!tx) return { ok: false, error: "找不到这笔单子" };
+    if (tx.status === "voided") return { ok: false, error: "这笔单子已经撤销过了" };
+    const now = M.now();
+    (tx.items || []).forEach((it) => {
+      if (it.product_id == null) return;
+      const stock = productStock(it.product_id);
+      S.ledger.push({
+        id: nextId("ledger"), product_id: it.product_id, change_qty: it.qty,
+        reason: "void_return", transaction_id: tx.id, stock_after: stock + it.qty,
+        created_at: now,
+      });
+    });
+    tx.status = "voided";
+    tx.voided_at = now;
+    tx.void_reason = String(reason || "").trim() || null;
+    touch();
+    return { ok: true, transaction: tx };
+  }
+
+  function listTransactions(limit, sessionId) {
+    return S.transactions
+      .filter((t) => sessionId == null || t.session_id === sessionId)
+      .slice().sort((a, b) => b.id - a.id).slice(0, limit || 40);
+  }
+
+  function txQuickText(tx) {
+    return (tx.items || []).map((i) => i.qty + "×" + i.name).join(" + ") || "（无明细）";
+  }
+
+  function stats(sessionId) {
+    const scope = S.transactions.filter((t) =>
+      t.status === "completed" && (sessionId == null || t.session_id === sessionId));
+    const gross = scope.reduce((a, t) => a + t.gross_cents, 0);
+    const discount = scope.reduce((a, t) => a + t.discount_cents, 0);
+    const revenue = scope.reduce((a, t) => a + t.final_cents, 0);
+    const items = scope.reduce((a, t) => a + t.item_count, 0);
+
+    const rank = new Map();
+    scope.forEach((t) => (t.items || []).forEach((i) => {
+      const key = i.name;
+      const cur = rank.get(key) || { name: key, qty: 0, revenue_cents: 0, orders: 0 };
+      cur.qty += i.qty; cur.revenue_cents += i.qty * i.unit_price_cents; cur.orders += 1;
+      rank.set(key, cur);
+    }));
+    const products = Array.from(rank.values()).sort((a, b) => b.revenue_cents - a.revenue_cents);
+
+    const hours = new Map();
+    scope.forEach((t) => {
+      const h = M.hm(t.created_at).slice(0, 2) || "00";
+      const cur = hours.get(h) || { hour: h, orders: 0, revenue_cents: 0 };
+      cur.orders += 1; cur.revenue_cents += t.final_cents;
+      hours.set(h, cur);
+    });
+    const hourly = Array.from(hours.values()).sort((a, b) => a.hour.localeCompare(b.hour));
+
+    return {
+      summary: {
+        orders: scope.length, item_count: items, gross_cents: gross,
+        discount_cents: discount, revenue_cents: revenue,
+        gross_display: M.money(gross), discount_display: M.money(discount),
+        revenue_display: M.money(revenue),
+        avg_order_cents: scope.length ? Math.round(revenue / scope.length) : 0,
+        effective_rate: M.rate(gross, revenue),
+      },
+      products, hourly,
+    };
+  }
+
+  function settings() { return S.settings; }
+
+  function saveSettings(patch) {
+    const next = Object.assign({}, S.settings, patch);
+    if (next.percent_value != null) {
+      const v = Number(next.percent_value);
+      if (!(v > 0 && v <= 10)) return { ok: false, error: "折扣值要在 0 到 10 之间" };
+      next.percent_value = v;
+    }
+    if (next.threshold_tiers) next.threshold_tiers = Pricing.normalizeTiers(next.threshold_tiers);
+    if (next.bundle_rules) next.bundle_rules = Pricing.normalizeBundles(next.bundle_rules);
+    if (next.stall_name != null && !String(next.stall_name).trim()) next.stall_name = "我的小摊";
+    S.settings = next;
+    touch();
+    return { ok: true, settings: S.settings };
+  }
+
+  /* ---------------- 备份 ---------------- */
+  function exportArchive() {
+    return {
+      format: "stallcalc-phone-archive", version: 1, exported_at: M.now(),
+      source: "stallcalc 手机版", stall_name: S.settings.stall_name,
+      settings: S.settings, products: S.products, sessions: S.sessions,
+      transactions: S.transactions, ledger: S.ledger, seq: S.seq,
+    };
+  }
+
+  function importArchive(raw, mode) {
+    let data;
+    try { data = typeof raw === "string" ? JSON.parse(raw) : raw; }
+    catch (e) { return { ok: false, error: "这个文件不是有效的 JSON，可能选错文件了" }; }
+    if (!data || (data.format !== "stallcalc-phone-archive" &&
+                  data.format !== "stallcalc-phone")) {
+      // 兼容：早期的手机档案格式标记不同，但字段一致
+      if (!data || (!data.products && !data.transactions)) {
+        return { ok: false, error: "这个文件不是出摊计算器的备份" };
+      }
+    }
+    const replace = mode !== "merge";
+    const incoming = {
+      products: Array.isArray(data.products) ? data.products : [],
+      sessions: Array.isArray(data.sessions) ? data.sessions : [],
+      transactions: Array.isArray(data.transactions) ? data.transactions : [],
+      ledger: Array.isArray(data.ledger) ? data.ledger : [],
+    };
+
+    if (replace) {
+      S.products = incoming.products.map((p) => Object.assign({}, p));
+      S.sessions = incoming.sessions.map((s) => Object.assign({}, s));
+      S.transactions = incoming.transactions.map((tx) =>
+        Object.assign({}, tx, { items: (tx.items || []).map((i) => Object.assign({}, i)) }));
+      S.ledger = incoming.ledger.map((e) => Object.assign({}, e));
+      if (data.settings) S.settings = Object.assign({}, S.settings, data.settings);
+      // 顶层也可能带一份摊位名（电脑版档案里就有），一起收下
+      if (data.stall_name) S.settings.stall_name = data.stall_name;
+      if (data.seq) S.seq = Object.assign({ seq: S.seq }, data.seq).seq || data.seq;
+      else {
+        S.seq = {
+          product: S.products.reduce((m, p) => Math.max(m, p.id || 0), 0),
+          session: S.sessions.reduce((m, s) => Math.max(m, s.id || 0), 0),
+          transaction: S.transactions.reduce((m, t) => Math.max(m, t.id || 0), 0),
+          ledger: S.ledger.reduce((m, e) => Math.max(m, e.id || 0), 0),
+        };
+      }
+      S.cart = [];
+      persist();
+      return {
+        ok: true, replaced: true,
+        counts: { products: S.products.length, transactions: S.transactions.length,
+                  sessions: S.sessions.length, ledger: S.ledger.length },
+      };
+    }
+
+    // 合并：以「名字 + 单价」判断是不是同一个商品，避免重复导入出现两套货
+    const idMap = new Map();
+    let addedProducts = 0, addedTx = 0;
+    incoming.products.forEach((p) => {
+      const same = S.products.find((x) => x.name === p.name && x.price_cents === p.price_cents);
+      if (same) { idMap.set(p.id, same.id); return; }
+      const fresh = Object.assign({}, p, { id: nextId("product") });
+      S.products.push(fresh);
+      idMap.set(p.id, fresh.id);
+      addedProducts++;
+    });
+    const sessionMap = new Map();
+    incoming.sessions.forEach((s) => {
+      const fresh = Object.assign({}, s, { id: nextId("session"), is_active: false });
+      S.sessions.push(fresh);
+      sessionMap.set(s.id, fresh.id);
+    });
+    const txMap = new Map();
+    incoming.transactions.forEach((tx) => {
+      const fresh = Object.assign({}, tx, {
+        id: nextId("transaction"),
+        session_id: sessionMap.has(tx.session_id) ? sessionMap.get(tx.session_id) : null,
+        items: (tx.items || []).map((i) => Object.assign({}, i, {
+          product_id: idMap.has(i.product_id) ? idMap.get(i.product_id) : null,
+        })),
+      });
+      S.transactions.push(fresh);
+      txMap.set(tx.id, fresh.id);
+      addedTx++;
+    });
+    incoming.ledger.forEach((e) => {
+      S.ledger.push(Object.assign({}, e, {
+        id: nextId("ledger"),
+        product_id: idMap.has(e.product_id) ? idMap.get(e.product_id) : e.product_id,
+        transaction_id: txMap.has(e.transaction_id) ? txMap.get(e.transaction_id) : null,
+      }));
+    });
+    persist();
+    return {
+      ok: true, replaced: false,
+      counts: { products: addedProducts, transactions: addedTx,
+                sessions: incoming.sessions.length, ledger: incoming.ledger.length },
+    };
+  }
+
+  function resetAll() {
+    S = Store.blank();
+    Store.clear();
+    persist();
+  }
+
+  return {
+    state, touch, persist,
+    listProducts, productView, productStock, productSold, categories, saveProduct,
+    deleteProduct, restock, productLedger,
+    activeSession, ensureSession, startSession, closeSession, listSessions,
+    sessionLines, sessionSummary,
+    cartLines, cartTotals, discountConfig, setDiscount,
+    addToCart, addToCartForce, setCartQty, clearCart, commitTransaction, voidTransaction,
+    listTransactions, txQuickText, stats, settings, saveSettings,
+    exportArchive, importArchive, resetAll,
+  };
+})();
+
+/* ------------------------------------------------------------------ 图片压缩 */
+const Images = (function () {
+  /* 用浏览器自带的 canvas 压缩，不需要任何后端库。
+     这一步在手机上比电脑版还强——电脑版因为装不了 Pillow 只能存原图。 */
+  function compress(file, maxEdge, quality) {
+    const edge = maxEdge || 900;
+    const q = quality == null ? 0.82 : quality;
+    return new Promise((resolve, reject) => {
+      if (!file) { reject(new Error("没有选中文件")); return; }
+      if (file.size > 20 * 1024 * 1024) {
+        reject(new Error("这张图太大了（超过 20MB），换一张吧")); return;
+      }
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("读不出这个文件"));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error("这个文件不是有效的图片"));
+        img.onload = () => {
+          let { width, height } = img;
+          if (!width || !height) { reject(new Error("图片尺寸不对")); return; }
+          const scale = Math.min(1, edge / Math.max(width, height));
+          const w = Math.max(1, Math.round(width * scale));
+          const h = Math.max(1, Math.round(height * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#fff";                    // 透明底转白，免得存成黑块
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          let out;
+          try { out = canvas.toDataURL("image/jpeg", q); }
+          catch (e) { reject(new Error("压缩失败：" + e.message)); return; }
+          resolve({ dataUrl: out, width: w, height: h, bytes: Math.round(out.length * 0.75) });
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  return { compress };
+})();
+
+/* ------------------------------------------------------------------ 界面 */
+const UI = (function () {
+  const el = {
+    main: document.getElementById("main"),
+    nav: document.getElementById("nav"),
+    scrim: document.getElementById("scrim"),
+    cartSheet: document.getElementById("cart-sheet"),
+    cartBody: document.getElementById("cart-body"),
+    cartSteps: document.getElementById("cart-steps"),
+    cartCount: document.getElementById("cart-count"),
+    discountBadge: document.getElementById("discount-badge"),
+    discountBody: document.getElementById("discount-body"),
+    sessionSheet: document.getElementById("session-sheet"),
+    sessionBody: document.getElementById("session-body"),
+    modal: document.getElementById("modal"),
+    modalBox: document.getElementById("modal-box"),
+    toasts: document.getElementById("toasts"),
+    hdrTitle: document.getElementById("hdr-title"),
+    hdrSession: document.getElementById("hdr-session"),
+  };
+
+  const TABS = [
+    { id: "cashier", icon: "🧮", label: "收银" },
+    { id: "goods", icon: "🏷️", label: "商品" },
+    { id: "stock", icon: "📦", label: "库存" },
+    { id: "stats", icon: "📊", label: "统计" },
+    { id: "more", icon: "⚙️", label: "更多" },
+  ];
+
+  let current = "cashier";
+  const local = { search: "", category: "全部", stockLowOnly: false, statsSessionId: "all" };
+
+  /* ---------------------------------------------------------- 提示 */
+  function toast(message, kind) {
+    const node = document.createElement("div");
+    node.className = "toast" + (kind ? " toast--" + kind : "");
+    node.textContent = message;
+    el.toasts.appendChild(node);
+    setTimeout(() => {
+      node.style.transition = "opacity .2s"; node.style.opacity = "0";
+      setTimeout(() => node.remove(), 220);
+    }, kind === "error" ? 4200 : 2300);
+  }
+
+  /* ---------------------------------------------------------- 弹窗 */
+  function modal(opts) {
+    const o = opts || {};
+    el.modalBox.innerHTML = "";
+    const head = document.createElement("div");
+    head.className = "modal__head";
+    head.innerHTML = '<span class="sheet__title"></span><button class="x" type="button">×</button>';
+    head.querySelector(".sheet__title").textContent = o.title || "";
+    const body = document.createElement("div");
+    body.className = "modal__body";
+    if (o.body instanceof Node) body.appendChild(o.body);
+    else if (typeof o.body === "string") body.innerHTML = o.body;
+
+    /* 底部按钮栏无条件创建。
+       原因：若允许「无底栏」状态存在，调用方忘记传入按钮时弹窗将无法操作。
+       现改为强制有底栏，缺省则自动补一个「关闭」按钮，保证弹窗始终可以退出。 */
+    const foot = document.createElement("div");
+    foot.className = "modal__foot";
+    if (o.footer instanceof Node) foot.appendChild(o.footer);
+    else if (typeof o.footer === "string" && o.footer.trim()) foot.innerHTML = o.footer;
+
+    el.modalBox.appendChild(head);
+    el.modalBox.appendChild(body);
+    el.modalBox.appendChild(foot);
+    el.modal.classList.add("is-open");
+
+    let closed = false;
+    function close() {
+      if (closed) return;
+      closed = true;
+      el.modal.classList.remove("is-open");
+      el.modalBox.innerHTML = "";
+      document.body.style.overflow = "";
+      if (typeof o.onClose === "function") o.onClose();
+    }
+    head.querySelector(".x").addEventListener("click", close);
+    el.modal.addEventListener("click", (e) => { if (e.target === el.modal) close(); });
+
+    if (!foot.children.length) {
+      // 调用方没给按钮：给一个保底出口，绝不能让人关不掉
+      const fallback = document.createElement("button");
+      fallback.className = "btn btn--primary";
+      fallback.type = "button";
+      fallback.textContent = "关闭";
+      fallback.addEventListener("click", () => close());
+      foot.appendChild(fallback);
+    }
+
+    /* 内容超出可视高度时显示提示阴影，提示下方还有内容可滚动 */
+    function syncScrollHint() {
+      const scrollable = body.scrollHeight > body.clientHeight + 2;
+      el.modalBox.classList.toggle("is-scrollable",
+        scrollable && body.scrollTop < body.scrollHeight - body.clientHeight - 2);
+    }
+    body.addEventListener("scroll", syncScrollHint);
+    setTimeout(syncScrollHint, 30);
+    setTimeout(syncScrollHint, 260);      // 图片/字体加载完高度会变，再校一次
+
+    return { close, body, footer: foot };
+  }
+
+  function confirm(opts) {
+    return new Promise((resolve) => {
+      const o = opts || {};
+      let done = false;
+      const settle = (v) => { if (!done) { done = true; resolve(v); } };
+      const handle = modal({
+        title: o.title || "确认一下", body: o.body || "", onClose: () => settle(false),
+      });
+      handle.footer.innerHTML = "";
+      const cancel = document.createElement("button");
+      cancel.className = "btn"; cancel.type = "button"; cancel.textContent = o.cancelText || "取消";
+      const accept = document.createElement("button");
+      accept.className = "btn " + (o.danger ? "btn--danger" : "btn--primary");
+      accept.type = "button"; accept.textContent = o.confirmText || "确认";
+      cancel.addEventListener("click", () => { settle(false); handle.close(); });
+      accept.addEventListener("click", () => { settle(true); handle.close(); });
+      handle.footer.appendChild(cancel);
+      handle.footer.appendChild(accept);
+    });
+  }
+
+  /* ---------------------------------------------------------- 抽屉 */
+  function openSheet(sheet) {
+    closeSheets();
+    sheet.classList.add("is-open");
+    el.scrim.classList.add("is-open");
+  }
+  function closeSheets() {
+    el.cartSheet.classList.remove("is-open");
+    el.sessionSheet.classList.remove("is-open");
+    el.scrim.classList.remove("is-open");
+  }
+  el.scrim.addEventListener("click", closeSheets);
+  document.querySelectorAll("[data-close-sheet]").forEach((b) =>
+    b.addEventListener("click", closeSheets));
+
+  /* ---------------------------------------------------------- 页面切换 */
+  function go(tab) {
+    current = tab;
+    Array.prototype.forEach.call(document.querySelectorAll(".view"), (v) => {
+      v.classList.toggle("is-active", v.id === "view-" + tab);
+    });
+    Array.prototype.forEach.call(el.nav.children, (b) => {
+      b.classList.toggle("is-active", b.dataset.tab === tab);
+    });
+    el.main.className = "main" + (tab === "cashier" ? " main--cashier" : "");
+    window.scrollTo(0, 0);
+    render();
+  }
+
+  function renderNav() {
+    el.nav.innerHTML = TABS.map((t) =>
+      '<button class="nav__item' + (t.id === current ? " is-active" : "") +
+      '" data-tab="' + t.id + '"><span class="nav__icon">' + t.icon +
+      '</span><span>' + t.label + "</span></button>").join("");
+    Array.prototype.forEach.call(el.nav.children, (b) => {
+      b.addEventListener("click", () => go(b.dataset.tab));
+    });
+  }
+
+  function render() {
+    const s = Biz.settings();
+    el.hdrTitle.textContent = s.stall_name || "我的小摊";
+    const active = Biz.activeSession();
+    el.hdrSession.textContent = active ? "这一场：" + active.name : "未开场";
+    if (current === "cashier") viewCashier();
+    if (current === "goods") viewGoods();
+    if (current === "stock") viewStock();
+    if (current === "stats") viewStats();
+    if (current === "more") viewMore();
+    renderCart();
+  }
+
+  /* ---------------------------------------------------------- 收银 */
+  function viewCashier() {
+    const products = Biz.listProducts(true);
+    const host = document.getElementById("view-cashier");
+    const cats = ["全部"].concat(Biz.categories());
+    if (cats.indexOf(local.category) < 0) local.category = "全部";
+
+    const list = products.filter((p) => {
+      if (local.category !== "全部" && p.category !== local.category) return false;
+      const kw = local.search.trim().toLowerCase();
+      if (kw && (p.name + " " + p.category).toLowerCase().indexOf(kw) < 0) return false;
+      return true;
+    });
+
+    const inCart = new Map();
+    Biz.state().cart.forEach((c) => inCart.set(c.product_id, c.qty));
+
+    host.innerHTML =
+      '<input class="input" id="c-search" type="search" placeholder="搜商品名 / 分类…" ' +
+      'autocomplete="off" value="' + M.esc(local.search) + '" style="margin-bottom:9px">' +
+      '<div class="chips">' + cats.map((c) =>
+        '<button class="chip' + (c === local.category ? " is-active" : "") +
+        '" data-cat="' + M.esc(c) + '">' + M.esc(c) + "</button>").join("") + "</div>" +
+      (list.length ? '<div class="grid">' + list.map((p) => {
+        const n = inCart.get(p.id) || 0;
+        const out = p.stock_current <= 0;
+        return '<button class="goods' + (n ? " is-picked" : "") + (out ? " is-out" : "") +
+          '" data-add="' + p.id + '">' +
+          '<div class="goods__thumb">' +
+          (p.image ? '<img src="' + p.image + '" alt="">'
+                   : '<span class="goods__ph">' + M.esc(p.name.slice(0, 1)) + "</span>") +
+          (n ? '<span class="goods__qty">' + n + "</span>" : "") +
+          (out ? '<span class="goods__out">缺货</span>' : "") +
+          "</div>" +
+          '<div class="goods__name">' + M.esc(p.name) + "</div>" +
+          '<div class="goods__meta"><span class="goods__price">¥' + p.price_display + "</span>" +
+          '<span class="goods__stock' + (p.low_stock ? " is-low" : "") + '">余 ' +
+          p.stock_current + "</span></div>" +
+          (p.discount_label ? '<span class="goods__rule">' + M.esc(p.discount_label) + "</span>" : "") +
+          "</button>";
+      }).join("") + "</div>"
+      : '<div class="card"><div class="empty"><span class="empty__icon">🔍</span>' +
+        '<div class="empty__title">这里还没有商品</div>' +
+        '<div class="small">去「商品」页点右下角添加吧</div></div></div>') +
+      '<div class="buybar">' +
+      '<button class="btn btn--ghost btn--sm" id="c-clear" type="button">清空</button>' +
+      '<div class="buybar__mid" id="c-open"><div class="buybar__count" id="c-count">还没选商品</div>' +
+      '<div class="buybar__total" id="c-total">¥0.00</div></div>' +
+      '<button class="btn btn--primary" id="c-checkout" type="button" disabled>结算</button></div>';
+
+    const search = document.getElementById("c-search");
+    search.addEventListener("input", () => {
+      local.search = search.value;
+      const pos = search.selectionStart;
+      viewCashier();
+      const box = document.getElementById("c-search");
+      box.focus(); box.setSelectionRange(pos, pos);
+    });
+    host.querySelectorAll("[data-cat]").forEach((b) =>
+      b.addEventListener("click", () => { local.category = b.dataset.cat; viewCashier(); }));
+    host.querySelectorAll("[data-add]").forEach((b) =>
+      b.addEventListener("click", () => tapAdd(Number(b.dataset.add))));
+    document.getElementById("c-clear").addEventListener("click", () => {
+      Biz.clearCart(); renderCart(); viewCashier();
+    });
+    document.getElementById("c-open").addEventListener("click", () => {
+      openSheet(el.cartSheet); renderCart();
+    });
+    document.getElementById("c-checkout").addEventListener("click", openCheckout);
+    renderCart();
+  }
+
+  function tapAdd(productId) {
+    const allowNeg = !!Biz.settings().allow_negative_stock;
+    const stock = Biz.productStock(productId);
+    const res = Biz.addToCart(productId, allowNeg ? null : stock);
+    if (!res.ok) {
+      const p = Biz.state().products.find((x) => x.id === productId);
+      if (res.overflow) {
+        confirm({
+          title: "库存不够了",
+          body: "<p><strong>" + M.esc(p.name) + "</strong> 系统里只剩 <strong>" +
+                stock + "</strong> 件。</p><p class=\"small muted\">如果你确定实际还有货" +
+                "（比如上架时数少了），可以选「按实际卖出」，这一单会照常记账，" +
+                "库存会变成负数提醒你补数。</p>",
+          confirmText: "按实际卖出", cancelText: "先不加", danger: true,
+        }).then((yes) => {
+          if (!yes) return;
+          Biz.addToCartForce(productId);          // 摊主确认「实际还有货」，直接加上
+          afterCartChange();
+        });
+      } else {
+        toast(res.error || "加不进购物车", "error");
+      }
+      return;
+    }
+    afterCartChange();
+  }
+
+  function afterCartChange() {
+    renderCart();
+    const grid = document.querySelectorAll("[data-add]");
+    if (grid.length) viewCashier();
+    showStorageWarningIfNeeded();
+  }
+
+  function showStorageWarningIfNeeded() {
+    const u = Store.usage();
+    if (u.limit && u.bytes > u.limit * 0.85 && !showStorageWarningIfNeeded.warned) {
+      showStorageWarningIfNeeded.warned = true;
+      toast("手机存储快满了（" + Math.round(u.bytes / 1024) + "KB），建议去「更多」导出备份",
+            "error");
+    }
+  }
+
+  /* ---------------------------------------------------------- 购物车 */
+  function renderCart() {
+    const data = Biz.cartTotals();
+    const q = data.quote;
+    el.cartCount.textContent = data.count + " 件";
+
+    const lines = Biz.cartLines();
+    const cart = Biz.state().cart;
+    if (!lines.length) {
+      el.cartBody.innerHTML = '<div class="empty" style="padding:22px 8px">' +
+        '<span class="empty__icon">🛒</span><div class="empty__title">还没选商品</div>' +
+        '<div class="small">点商品图就能加一件</div></div>';
+    } else {
+      el.cartBody.innerHTML = lines.map((l) => {
+        const item = cart.find((c) => c.product_id === l.product_id) || { qty: l.qty };
+        return '<div class="cart-line"><div class="cart-line__main">' +
+          '<div class="cart-line__name">' + M.esc(l.name) + "</div>" +
+          '<div class="cart-line__sub mono">¥' + M.money(l.unit_price_cents) + " × " + l.qty +
+          " = <strong>¥" + M.money(l.unit_price_cents * l.qty) + "</strong></div></div>" +
+          '<div class="stepper">' +
+          '<button type="button" data-minus="' + l.product_id + '">−</button>' +
+          '<span class="stepper__num">' + item.qty + "</span>" +
+          '<button type="button" data-plus="' + l.product_id + '">＋</button></div></div>';
+      }).join("");
+      el.cartBody.querySelectorAll("[data-minus]").forEach((b) =>
+        b.addEventListener("click", () => {
+          const id = Number(b.dataset.minus);
+          const cur = (cart.find((c) => c.product_id === id) || {}).qty || 0;
+          Biz.setCartQty(id, cur - 1);
+          afterCartChange();
+        }));
+      el.cartBody.querySelectorAll("[data-plus]").forEach((b) =>
+        b.addEventListener("click", () => tapAdd(Number(b.dataset.plus))));
+    }
+
+    if (q) {
+      const rows = q.stages.filter((s) => s.key !== "final").map((s) => {
+        const cut = s.amount_cents < 0;
+        return '<div class="steps__row' + (cut ? " steps__row--cut" : "") + '">' +
+          '<span class="steps__label">' + M.esc(s.label) + "</span>" +
+          '<span class="steps__value">' + (cut ? "-" : "") + "¥" +
+          M.money(Math.abs(s.amount_cents)) + "</span></div>";
+      }).join("");
+      el.cartSteps.innerHTML = '<div class="steps">' + rows +
+        '<div class="steps__row steps__row--total"><span>应收</span>' +
+        '<span class="steps__value">¥' + M.money(q.final_cents) + "</span></div></div>" +
+        (q.discount_cents > 0 ? '<div class="saving">已省 ¥' + M.money(q.discount_cents) +
+          "（相当于 " + M.esc(q.effective_rate) + "）</div>" : "");
+    } else {
+      el.cartSteps.innerHTML = "";
+    }
+
+    const enabled = data.count > 0;
+    const btn = document.getElementById("btn-checkout");
+    if (btn) {
+      btn.disabled = !enabled;
+      btn.textContent = enabled ? "结算 ¥" + (q ? M.money(q.final_cents) : "…") : "结算";
+    }
+    const mini = document.getElementById("c-checkout");
+    if (mini) {
+      mini.disabled = !enabled;
+      mini.textContent = enabled ? "结算 ¥" + (q ? M.money(q.final_cents) : "…") : "结算";
+    }
+    const total = document.getElementById("c-total");
+    if (total) total.textContent = "¥" + (q ? M.money(q.final_cents) : "0.00");
+    const count = document.getElementById("c-count");
+    if (count) count.textContent = data.count ? "共 " + data.count + " 件" : "还没选商品";
+
+    renderDiscountBody();
+  }
+
+  /* ---------------------------------------------------------- 折扣设置 */
+  function renderDiscountBody() {
+    const cfg = Biz.discountConfig();
+    const badge = el.discountBadge;
+    const bits = [];
+    if (cfg.percent_enabled) bits.push(cfg.percent_value + " 折");
+    if (cfg.threshold_enabled && (cfg.tiers || []).length) bits.push("满减 " + cfg.tiers.length + " 档");
+    if (bits.length) {
+      badge.textContent = bits.join(" + ");
+      badge.className = "badge badge--brand";
+    } else {
+      badge.className = "badge hidden";
+    }
+
+    const tiers = Pricing.normalizeTiers(cfg.tiers);
+    el.discountBody.innerHTML =
+      '<label class="switch"><input type="checkbox" id="d-percent"' +
+        (cfg.percent_enabled ? " checked" : "") +
+        '><span class="switch__track"></span><span>比例折扣</span></label>' +
+      '<div class="row"><input class="input input--num" id="d-percent-val" type="number" ' +
+        'step="0.1" min="0.1" max="10" value="' + cfg.percent_value + '" style="max-width:100px">' +
+        '<span class="muted small">折（10 = 不打折）</span></div>' +
+      '<hr class="sep">' +
+      '<label class="switch"><input type="checkbox" id="d-threshold"' +
+        (cfg.threshold_enabled ? " checked" : "") +
+        '><span class="switch__track"></span><span>满减</span></label>' +
+      '<div id="d-tiers">' + (tiers.length ? tiers.map((t) =>
+        '<div class="tier-row" style="margin-bottom:6px">' +
+        '<span class="small muted nowrap">满</span>' +
+        '<input class="input input--num" data-th="' + t.threshold_cents + '" type="number" ' +
+        'min="0" step="1" value="' + (t.threshold_cents / 100).toFixed(2) + '">' +
+        '<span class="small muted nowrap">减</span>' +
+        '<input class="input input--num" data-cut="' + t.cut_cents + '" type="number" ' +
+        'min="0" step="0.5" value="' + (t.cut_cents / 100).toFixed(2) + '">' +
+        '<button class="btn btn--ghost btn--xs" type="button" data-del-tier="' +
+        t.threshold_cents + '">✕</button></div>').join("")
+        : '<div class="small faint">还没有档位，点下面加一档</div>') + "</div>" +
+      '<button class="btn btn--sm" id="d-add-tier" type="button">＋ 加一档</button>' +
+      '<hr class="sep">' +
+      '<label class="field" style="margin:0"><span class="field__label">尾数取整</span>' +
+      '<select class="select" id="d-round">' + Object.keys(M.ROUNDING).map((k) =>
+        '<option value="' + k + '"' + (cfg.rounding_mode === k ? " selected" : "") + ">" +
+        M.ROUNDING[k] + "</option>").join("") + "</select></label>" +
+      ((cfg.percent_enabled && cfg.threshold_enabled)
+        ? '<div class="notice notice--warn">比例折扣和满减会叠加（先打折再满减），' +
+          "力度较大，结算前会再次确认。</div>" : "");
+
+    const pct = document.getElementById("d-percent");
+    pct.addEventListener("change", () => {
+      let v = parseFloat(document.getElementById("d-percent-val").value);
+      if (!isFinite(v) || v <= 0 || v >= 10) v = 9;
+      Biz.setDiscount({ percent_enabled: pct.checked, percent_value: v });
+      renderCart();
+    });
+    document.getElementById("d-percent-val").addEventListener("change", (e) => {
+      let v = parseFloat(e.target.value);
+      if (!isFinite(v) || v <= 0) v = 0.1;
+      if (v > 10) v = 10;
+      Biz.setDiscount({ percent_value: v });
+      renderCart();
+    });
+    document.getElementById("d-threshold").addEventListener("change", (e) => {
+      let list = Pricing.normalizeTiers(Biz.discountConfig().tiers);
+      if (e.target.checked && !list.length) list = [{ threshold_cents: 10000, cut_cents: 1000 }];
+      Biz.setDiscount({ threshold_enabled: e.target.checked, tiers: list });
+      renderCart();
+    });
+    document.getElementById("d-add-tier").addEventListener("click", () => {
+      const list = Pricing.normalizeTiers(Biz.discountConfig().tiers);
+      const last = list[list.length - 1];
+      list.push({
+        threshold_cents: last ? last.threshold_cents + 10000 : 10000,
+        cut_cents: last ? last.cut_cents + 1000 : 1000,
+      });
+      Biz.setDiscount({ tiers: list });
+      renderCart();
+    });
+    el.discountBody.querySelectorAll("[data-del-tier]").forEach((b) =>
+      b.addEventListener("click", () => {
+        const target = Number(b.dataset.delTier);
+        Biz.setDiscount({
+          tiers: Pricing.normalizeTiers(Biz.discountConfig().tiers)
+            .filter((t) => t.threshold_cents !== target),
+        });
+        renderCart();
+      }));
+    el.discountBody.querySelectorAll("[data-th]").forEach((input) =>
+      input.addEventListener("change", () => {
+        const oldTh = Number(input.dataset.th);
+        const newTh = M.toCents(input.value) || 0;
+        const list = Pricing.normalizeTiers(Biz.discountConfig().tiers).map((t) =>
+          t.threshold_cents === oldTh ? { threshold_cents: newTh, cut_cents: t.cut_cents } : t);
+        Biz.setDiscount({ tiers: list });
+        renderCart();
+      }));
+    el.discountBody.querySelectorAll("[data-cut]").forEach((input) =>
+      input.addEventListener("change", () => {
+        const oldCut = Number(input.dataset.cut);
+        const newCut = M.toCents(input.value) || 0;
+        const list = Pricing.normalizeTiers(Biz.discountConfig().tiers).map((t) =>
+          t.cut_cents === oldCut ? { threshold_cents: t.threshold_cents, cut_cents: newCut } : t);
+        Biz.setDiscount({ tiers: list });
+        renderCart();
+      }));
+    document.getElementById("d-round").addEventListener("change", (e) => {
+      Biz.setDiscount({ rounding_mode: e.target.value });
+      renderCart();
+    });
+  }
+
+  /* ---------------------------------------------------------- 结算 */
+  function openCheckout() {
+    const data = Biz.cartTotals();
+    if (!data.quote) { toast("先选点商品吧", "error"); return; }
+    const q = data.quote;
+    const box = document.createElement("div");
+    box.innerHTML =
+      (q.stacked ? '<div class="notice notice--warn" style="margin-bottom:11px">' +
+        "比例折扣和满减<b>叠加</b>生效中，确认一下金额没问题再收钱。</div>" : "") +
+      '<div class="steps">' + q.stages.filter((s) => s.key !== "final").map((s) =>
+        '<div class="steps__row' + (s.amount_cents < 0 ? " steps__row--cut" : "") + '">' +
+        '<span class="steps__label">' + M.esc(s.label) + "</span>" +
+        '<span class="steps__value">' + (s.amount_cents < 0 ? "-" : "") + "¥" +
+        M.money(Math.abs(s.amount_cents)) + "</span></div>").join("") +
+      '<div class="steps__row steps__row--total"><span>应收</span><span class="steps__value">¥' +
+      M.money(q.final_cents) + "</span></div></div>" +
+      '<div class="field mt-16"><span class="field__label">客人付了多少（可选，填了自动算找零）</span>' +
+      '<input class="input input--num" id="pay-in" type="number" inputmode="decimal" min="0" ' +
+      'step="0.01" placeholder="留空表示正好收齐"></div>' +
+      '<div class="row" id="quick-pay" style="margin-bottom:9px"></div>' +
+      '<div class="notice notice--brand hidden" id="change-box"></div>' +
+      '<label class="field mt-16"><span class="field__label">备注（可选）</span>' +
+      '<input class="input" id="note-in" maxlength="60" placeholder="比如：老客人预留"></label>';
+
+    const handle = modal({ title: "确认这一单", body: box, footer: "" });
+    const payIn = box.querySelector("#pay-in");
+    const changeBox = box.querySelector("#change-box");
+    const quick = box.querySelector("#quick-pay");
+
+    const values = [];
+    [q.final_cents, 5000, 10000, 20000, 50000].forEach((c) => {
+      if (c >= q.final_cents && values.indexOf(c) < 0) values.push(c);
+    });
+    values.slice(0, 4).forEach((c) => {
+      const b = document.createElement("button");
+      b.className = "btn btn--sm"; b.type = "button"; b.textContent = "¥" + M.money(c);
+      b.addEventListener("click", () => { payIn.value = (c / 100).toFixed(2); updateChange(); });
+      quick.appendChild(b);
+    });
+
+    function updateChange() {
+      const paid = M.toCents(payIn.value);
+      if (paid == null || payIn.value.trim() === "") { changeBox.classList.add("hidden"); return; }
+      const diff = paid - q.final_cents;
+      changeBox.classList.remove("hidden");
+      if (diff < 0) {
+        changeBox.className = "notice notice--danger";
+        changeBox.textContent = "还差 ¥" + M.money(-diff) + "，实付金额不足";
+      } else {
+        changeBox.className = "notice notice--brand";
+        changeBox.textContent = "应找零 ¥" + M.money(diff);
+      }
+    }
+    payIn.addEventListener("input", updateChange);
+
+    handle.footer.innerHTML = "";
+    const cancel = document.createElement("button");
+    cancel.className = "btn"; cancel.type = "button"; cancel.textContent = "再看看";
+    const submit = document.createElement("button");
+    submit.className = "btn btn--primary"; submit.type = "button"; submit.textContent = "完成交易";
+    submit.style.flex = "2";
+    cancel.addEventListener("click", () => handle.close());
+    submit.addEventListener("click", () => {
+      const paidText = payIn.value.trim();
+      const paid = paidText === "" ? null : M.toCents(payIn.value);
+      if (paidText !== "" && paid == null) { toast("客人付的金额填得不对", "error"); return; }
+      const res = Biz.commitTransaction({
+        paidCents: paid,
+        note: box.querySelector("#note-in").value.trim() || null,
+        confirmDiscount: q.stacked,
+        allowNegative: true,
+      });
+      if (!res.ok) { toast(res.error, "error"); return; }
+      handle.close();
+      closeSheets();
+      afterCartChange();
+      showReceipt(res.transaction);
+    });
+    handle.footer.appendChild(cancel);
+    handle.footer.appendChild(submit);
+  }
+
+  /* ---------------------------------------------------------- 回执 */
+  function showReceipt(tx) {
+    const voided = tx.status === "voided";
+    const box = document.createElement("div");
+    box.innerHTML =
+      '<div class="receipt__hero' + (voided ? " is-voided" : "") + '">' +
+      '<div class="receipt__label">' + (voided ? "这笔已撤销" : "实收") + "</div>" +
+      '<div class="receipt__amount">¥' + M.money(tx.final_cents) + "</div>" +
+      (tx.discount_cents > 0 ? '<div class="receipt__saving">原价 ¥' + M.money(tx.gross_cents) +
+        "，已省 ¥" + M.money(tx.discount_cents) + "（" + M.esc(M.rate(tx.gross_cents, tx.final_cents)) +
+        "）</div>" : "") + "</div>" +
+      '<div class="row row--between small faint"><span>单号 #' + tx.id + "</span><span>" +
+      M.esc(tx.created_at) + "</span></div>" +
+      '<div class="steps mt-10">' + (tx.items || []).map((i) =>
+        '<div class="steps__row"><span class="steps__label">' + M.esc(i.name) + " × " + i.qty +
+        '</span><span class="steps__value">¥' + M.money(i.unit_price_cents * i.qty) +
+        "</span></div>").join("") +
+      (tx.paid_cents != null ? '<div class="steps__row mt-10"><span class="steps__label">客人付' +
+        '</span><span class="steps__value">¥' + M.money(tx.paid_cents) + "</span></div>" +
+        '<div class="steps__row"><span class="steps__label">找零</span><span class="steps__value">¥' +
+        M.money(tx.change_cents || 0) + "</span></div>" : "") + "</div>" +
+      (tx.note ? '<div class="notice notice--brand mt-10">备注：' + M.esc(tx.note) + "</div>" : "");
+
+    const handle = modal({ title: voided ? "撤销回执" : "记好了", body: box, footer: "" });
+    handle.footer.innerHTML = "";
+    const undo = document.createElement("button");
+    undo.className = "btn"; undo.type = "button"; undo.textContent = "撤销这一单";
+    undo.disabled = voided;
+    const next = document.createElement("button");
+    next.className = "btn btn--primary"; next.type = "button"; next.textContent = "继续点下一单";
+    next.style.flex = "1.4";
+    undo.addEventListener("click", () => { handle.close(); askVoid(tx.id); });
+    next.addEventListener("click", () => handle.close());
+    handle.footer.appendChild(undo);
+    handle.footer.appendChild(next);
+  }
+
+  async function askVoid(txId) {
+    const tx = Biz.state().transactions.find((t) => t.id === txId);
+    const yes = await confirm({
+      title: "撤销 #" + txId + " 这笔？",
+      body: "<p>" + M.esc(Biz.txQuickText(tx)) + "</p>" +
+            '<p class="small muted">撤销后这一单不计入销售额，卖掉的商品会加回库存，' +
+            "单据本身留档，随时查得到。</p>",
+      confirmText: "确认撤销", danger: true,
+    });
+    if (!yes) return;
+    const res = Biz.voidTransaction(txId, "摊主在收银台撤销");
+    if (!res.ok) { toast(res.error, "error"); return; }
+    toast("已撤销，库存也加回去了", "ok");
+    render();
+  }
+
+  /* ---------------------------------------------------------- 商品管理 */
+  function viewGoods() {
+    const host = document.getElementById("view-goods");
+    const products = Biz.listProducts(false);
+    host.innerHTML =
+      '<h1 class="title">商品</h1>' +
+      '<p class="desc">点商品就能改；图片可以直接用手机拍照或从相册选，会自动压小。</p>' +
+      '<button class="btn btn--primary btn--block" id="g-add" type="button">＋ 新增商品</button>' +
+      '<div class="mt-16">' + (products.length
+        ? '<div class="card card--flush"><div class="list">' + products.map((p) => {
+            return '<div class="item" data-edit="' + p.id + '">' +
+              '<div class="item__thumb">' + (p.image
+                ? '<img src="' + p.image + '" alt="">' : M.esc(p.name.slice(0, 1))) + "</div>" +
+              '<div class="item__main"><div class="item__title">' + M.esc(p.name) +
+              (p.is_active ? "" : ' <span class="badge">已下架</span>') +
+              (p.low_stock ? ' <span class="badge badge--danger">库存低</span>' : "") + "</div>" +
+              '<div class="item__sub">¥' + p.price_display + " · " + M.esc(p.category) +
+              " · 剩 " + p.stock_current + " / 已售 " + p.sold +
+              (p.discount_label ? " · " + M.esc(p.discount_label) : "") + "</div></div>" +
+              '<div class="item__amount">' + p.stock_current + "</div></div>";
+          }).join("") + "</div></div>"
+        : '<div class="card"><div class="empty"><span class="empty__icon">🏷️</span>' +
+          '<div class="empty__title">还没有商品</div><div class="small">点上面的按钮添加第一个</div>' +
+          "</div></div>") + "</div>";
+
+    document.getElementById("g-add").addEventListener("click", () => editProduct(null));
+    host.querySelectorAll("[data-edit]").forEach((b) =>
+      b.addEventListener("click", () =>
+        editProduct(Biz.state().products.find((p) => p.id === Number(b.dataset.edit)))));
+  }
+
+  function editProduct(product) {
+    const editing = !!product;
+    const p = product || {
+      name: "", category: "", price_cents: 0, stock_initial: 0, low_stock_alert: 3,
+      is_active: true, discount_kind: "none", discount_nth: 2, discount_percent: 5, image: null,
+    };
+    const cats = Biz.categories();
+    const box = document.createElement("div");
+    box.innerHTML =
+      '<div class="form-grid form-grid--2">' +
+      '<label class="field field--full"><span class="field__label">商品名称 *</span>' +
+      '<input class="input" id="p-name" maxlength="60" value="' + M.esc(p.name) +
+      '" placeholder="比如：色纸 A3 特典"></label>' +
+      '<label class="field"><span class="field__label">单价（元）*</span>' +
+      '<input class="input input--num" id="p-price" type="number" min="0" step="0.01" value="' +
+      (p.price_cents / 100).toFixed(2) + '"></label>' +
+      '<label class="field"><span class="field__label">分类</span>' +
+      '<input class="input" id="p-cat" maxlength="20" value="' + M.esc(p.category) +
+      '" list="cat-list" placeholder="色纸 / 吧唧…">' +
+      '<datalist id="cat-list">' + cats.map((c) => '<option value="' + M.esc(c) + '">').join("") +
+      "</datalist></label>" +
+      '<label class="field"><span class="field__label">' +
+      (editing ? "这一场带来了多少件" : "初始库存") + "</span>" +
+      '<input class="input input--num" id="p-stock" type="number" min="0" step="1" value="' +
+      p.stock_initial + '"><span class="field__hint">改这个数，剩余跟着平移</span></label>' +
+      '<label class="field"><span class="field__label">库存预警线</span>' +
+      '<input class="input input--num" id="p-alert" type="number" min="0" step="1" value="' +
+      p.low_stock_alert + '"><span class="field__hint">低于这个数就标红</span></label>' +
+      '<div class="field field--full"><span class="field__label">商品图片</span>' +
+      '<div class="row"><div class="thumb" id="p-thumb">' + (p.image
+        ? '<img src="' + p.image + '" alt="">' : "<span>没有图片</span>") + "</div>" +
+      '<input type="file" id="p-file" accept="image/*" class="hidden">' +
+      '<button class="btn" type="button" id="p-pick">拍 / 选图片</button>' +
+      '<button class="btn btn--ghost' + (p.image ? "" : " hidden") + '" type="button" id="p-drop">' +
+      "移除</button></div>" +
+      '<span class="field__hint" id="p-img-hint">会在手机上自动压缩，原图不会传出去</span></div>' +
+      '<div class="field field--full"><span class="field__label">这件商品的优惠</span>' +
+      '<select class="select" id="p-kind">' +
+      '<option value="none">不单独优惠</option>' +
+      '<option value="second_half">第二件半价</option>' +
+      '<option value="nth_percent">第 N 件 X 折</option></select>' +
+      '<div class="row mt-6">' +
+      '<span class="row hidden" id="p-nth-wrap" style="gap:6px"><span class="small muted">第</span>' +
+      '<input class="input input--num" id="p-nth" type="number" min="2" max="99" step="1" value="' +
+      (p.discount_nth || 2) + '" style="max-width:70px"><span class="small muted">件</span></span>' +
+      '<span class="row hidden" id="p-pct-wrap" style="gap:6px">' +
+      '<input class="input input--num" id="p-pct" type="number" min="0.1" max="9.9" step="0.1" ' +
+      'value="' + (p.discount_percent || 5) + '" style="max-width:70px">' +
+      '<span class="small muted">折</span></span></div>' +
+      '<span class="field__hint">跨商品的「任意 N 件 X 元」套装在「更多 → 套装价」里配</span></div>' +
+      '<label class="switch"><input type="checkbox" id="p-active"' + (p.is_active ? " checked" : "") +
+      '><span class="switch__track"></span><span>在售（下架后收银台点不到）</span></label>' +
+      "</div>";
+
+    const handle = modal({ title: editing ? "改商品" : "新增商品", body: box, footer: "" });
+    const kind = box.querySelector("#p-kind");
+    kind.value = p.discount_kind || "none";
+    const nthWrap = box.querySelector("#p-nth-wrap");
+    const pctWrap = box.querySelector("#p-pct-wrap");
+    function syncKind() {
+      nthWrap.classList.toggle("hidden", kind.value !== "nth_percent");
+      pctWrap.classList.toggle("hidden", kind.value === "none");
+    }
+    kind.addEventListener("change", syncKind);
+    syncKind();
+
+    let pendingImage = p.image || null;
+    let imageChanged = false;
+    const file = box.querySelector("#p-file");
+    box.querySelector("#p-pick").addEventListener("click", () => file.click());
+    file.addEventListener("change", async () => {
+      const f = file.files && file.files[0];
+      if (!f) return;
+      const hint = box.querySelector("#p-img-hint");
+      hint.textContent = "正在压缩…";
+      try {
+        const out = await Images.compress(f);
+        pendingImage = out.dataUrl;
+        imageChanged = true;
+        box.querySelector("#p-thumb").innerHTML = '<img src="' + out.dataUrl + '" alt="">';
+        box.querySelector("#p-drop").classList.remove("hidden");
+        hint.textContent = "已压缩到 " + out.width + "×" + out.height + "，约 " +
+          Math.max(1, Math.round(out.bytes / 1024)) + "KB";
+      } catch (err) {
+        hint.textContent = err.message;
+        toast(err.message, "error");
+      }
+    });
+    box.querySelector("#p-drop").addEventListener("click", () => {
+      pendingImage = null; imageChanged = true; file.value = "";
+      box.querySelector("#p-thumb").innerHTML = "<span>没有图片</span>";
+      box.querySelector("#p-drop").classList.add("hidden");
+    });
+
+    handle.footer.innerHTML = "";
+    const cancel = document.createElement("button");
+    cancel.className = "btn"; cancel.type = "button"; cancel.textContent = "取消";
+    const save = document.createElement("button");
+    save.className = "btn btn--primary"; save.type = "button";
+    save.textContent = editing ? "保存修改" : "添加商品";
+    save.style.flex = "1.5";
+    cancel.addEventListener("click", () => handle.close());
+    save.addEventListener("click", () => {
+      const price = M.toCents(box.querySelector("#p-price").value);
+      const payload = {
+        id: editing ? product.id : undefined,
+        name: box.querySelector("#p-name").value,
+        category: box.querySelector("#p-cat").value,
+        price_cents: price,
+        stock_initial: parseInt(box.querySelector("#p-stock").value, 10) || 0,
+        low_stock_alert: parseInt(box.querySelector("#p-alert").value, 10) || 0,
+        is_active: box.querySelector("#p-active").checked,
+        discount_kind: kind.value,
+        discount_nth: parseInt(box.querySelector("#p-nth").value, 10) || 2,
+        discount_percent: parseFloat(box.querySelector("#p-pct").value) || 5,
+      };
+      if (imageChanged) payload.image = pendingImage;
+      const res = Biz.saveProduct(payload);
+      if (!res.ok) { toast(res.error, "error"); return; }
+      handle.close();
+      toast(editing ? "改好了" : "商品已添加", "ok");
+      viewGoods();
+    });
+    handle.footer.appendChild(cancel);
+    handle.footer.appendChild(save);
+
+    if (editing) {
+      const del = document.createElement("button");
+      del.className = "btn btn--danger"; del.type = "button"; del.textContent = "删除";
+      del.addEventListener("click", async () => {
+        const yes = await confirm({
+          title: "确定删除？",
+          body: "<p>要删除 <strong>" + M.esc(product.name) + "</strong> 吗？</p>" +
+                '<p class="small muted">历史单据会保留（商品名和单价有快照），但库存流水会被清掉。' +
+                "只是这场不卖了，建议改成「下架」。</p>",
+          confirmText: "删除", danger: true,
+        });
+        if (!yes) return;
+        Biz.deleteProduct(product.id);
+        handle.close();
+        toast("已删除", "ok");
+        viewGoods();
+      });
+      handle.footer.insertBefore(del, cancel);
+    }
+  }
+
+  /* ---------------------------------------------------------- 库存 */
+  function viewStock() {
+    const host = document.getElementById("view-stock");
+    const products = Biz.listProducts(false);
+    const totalBrought = products.reduce((a, p) => a + p.stock_initial, 0);
+    const totalSold = products.reduce((a, p) => a + p.sold, 0);
+    const totalStock = products.reduce((a, p) => a + p.stock_current, 0);
+    const value = products.reduce((a, p) => a + p.stock_current * p.price_cents, 0);
+    const low = products.filter((p) => p.low_stock);
+    const shown = local.stockLowOnly ? low : products;
+
+    host.innerHTML =
+      '<h1 class="title">库存</h1>' +
+      '<p class="desc">剩余低于预警线的会标红。每次变动都能在「流水」里追到。</p>' +
+      '<div class="stat-grid">' +
+      '<div class="stat"><div class="stat__label">带出总件数</div><div class="stat__value">' +
+      M.nums(totalBrought) + "<small> 件</small></div></div>" +
+      '<div class="stat stat--ok"><div class="stat__label">已售出</div><div class="stat__value">' +
+      M.nums(totalSold) + "<small> 件</small></div></div>" +
+      '<div class="stat stat--brand"><div class="stat__label">剩余库存</div><div class="stat__value">' +
+      M.nums(totalStock) + "<small> 件</small></div></div>" +
+      '<div class="stat ' + (low.length ? "stat--danger" : "") +
+      '"><div class="stat__label">库存告急</div><div class="stat__value">' + low.length +
+      "<small> 款</small></div></div>" +
+      '<div class="stat"><div class="stat__label">剩余货值</div><div class="stat__value" ' +
+      'style="font-size:19px">¥' + M.money(value) + "</div></div></div>" +
+      '<label class="switch mt-16"><input type="checkbox" id="s-low"' +
+      (local.stockLowOnly ? " checked" : "") + '><span class="switch__track"></span>' +
+      "<span>只看库存不足的</span></label>" +
+      (shown.length ? '<div class="card card--flush mt-10"><div class="list">' + shown.map((p) =>
+        '<div class="item"><div class="item__main">' +
+        '<div class="item__title">' + M.esc(p.name) +
+        (p.low_stock ? ' <span class="badge badge--danger">告急</span>' : "") +
+        (p.is_active ? "" : ' <span class="badge">已下架</span>') + "</div>" +
+        '<div class="item__sub">带出 ' + p.stock_initial + " · 已售 " + p.sold +
+        " · 剩余 <strong>" + p.stock_current + "</strong> · 预警 " + p.low_stock_alert + "</div></div>" +
+        '<div class="row" style="gap:5px"><button class="btn btn--sm" data-restock="' + p.id +
+        '" type="button">补货</button><button class="btn btn--ghost btn--sm" data-ledger="' + p.id +
+        '" type="button">流水</button></div></div>').join("") + "</div></div>"
+        : '<div class="card mt-10"><div class="empty"><span class="empty__icon">📦</span>' +
+          '<div class="empty__title">没有符合条件的商品</div></div></div>');
+
+    const lowBox = document.getElementById("s-low");
+    lowBox.addEventListener("change", () => { local.stockLowOnly = lowBox.checked; viewStock(); });
+    host.querySelectorAll("[data-restock]").forEach((b) =>
+      b.addEventListener("click", () =>
+        askRestock(Biz.state().products.find((p) => p.id === Number(b.dataset.restock)))));
+    host.querySelectorAll("[data-ledger]").forEach((b) =>
+      b.addEventListener("click", () =>
+        showLedger(Biz.state().products.find((p) => p.id === Number(b.dataset.ledger)))));
+  }
+
+  function askRestock(product) {
+    const stock = Biz.productStock(product.id);
+    const box = document.createElement("div");
+    box.innerHTML = "<p><strong>" + M.esc(product.name) + "</strong> 现在剩 <strong>" + stock +
+      "</strong> 件。</p>" +
+      '<label class="field mt-16"><span class="field__label">补多少件？（盘点发现少了就填负数）' +
+      '</span><input class="input input--num" id="r-qty" type="number" step="1" value="10"></label>' +
+      '<div class="notice notice--brand" id="r-hint">变动后剩余：' + (stock + 10) + " 件</div>";
+    const handle = modal({ title: "补货 / 盘点", body: box, footer: "" });
+    const input = box.querySelector("#r-qty");
+    const hint = box.querySelector("#r-hint");
+    input.addEventListener("input", () => {
+      const n = parseInt(input.value, 10);
+      hint.textContent = isFinite(n) ? "变动后剩余：" + (stock + n) + " 件" : "填个整数吧";
+    });
+    handle.footer.innerHTML = "";
+    const cancel = document.createElement("button");
+    cancel.className = "btn"; cancel.type = "button"; cancel.textContent = "取消";
+    const save = document.createElement("button");
+    save.className = "btn btn--primary"; save.type = "button"; save.textContent = "确认";
+    save.style.flex = "1.5";
+    cancel.addEventListener("click", () => handle.close());
+    save.addEventListener("click", () => {
+      const res = Biz.restock(product.id, input.value);
+      if (!res.ok) { toast(res.error, "error"); return; }
+      handle.close();
+      toast("库存已更新", "ok");
+      viewStock();
+    });
+    handle.footer.appendChild(cancel);
+    handle.footer.appendChild(save);
+  }
+
+  function showLedger(product) {
+    const rows = Biz.productLedger(product.id);
+    const box = document.createElement("div");
+    box.innerHTML = rows.length ? rows.map((e) =>
+      '<div class="steps__row" style="padding:5px 0"><span class="steps__label">' +
+      '<span class="small">' + M.esc(e.created_at.slice(5, 16)) + "</span> " +
+      M.esc(e.reason_label) + (e.tx_voided ? ' <span class="badge badge--danger">单已撤</span>' : "") +
+      '</span><span class="steps__value" style="color:' +
+      (e.change_qty < 0 ? "var(--danger)" : "var(--ok)") + '">' +
+      (e.change_qty > 0 ? "+" : "") + e.change_qty + " → " + e.stock_after + "</span></div>").join("")
+      : '<div class="small faint">还没有流水</div>';
+    modal({ title: "库存流水 · " + product.name, body: box });
+  }
+
+  /* ---------------------------------------------------------- 统计 */
+  function viewStats() {
+    const host = document.getElementById("view-stats");
+    const sessions = Biz.listSessions();
+    if (local.statsSessionId === "active") {
+      const a = Biz.activeSession();
+      local.statsSessionId = a ? String(a.id) : "all";
+    }
+    const sessionId = local.statsSessionId === "all" ? null : Number(local.statsSessionId);
+    const data = Biz.stats(sessionId);
+    const s = data.summary;
+
+    host.innerHTML =
+      '<h1 class="title">统计</h1>' +
+      '<p class="desc">只算没被撤销的单子。撤销过的仍留在下面记录里，随时可查。</p>' +
+      '<label class="field"><span class="field__label">看哪一场</span>' +
+      '<select class="select" id="st-session"><option value="all">全部场次（合计）</option>' +
+      sessions.map((x) => '<option value="' + x.id + '"' +
+        (String(local.statsSessionId) === String(x.id) ? " selected" : "") + ">" +
+        M.esc(x.name) + (x.is_active ? "（进行中）" : "") + "</option>").join("") +
+      "</select></label>" +
+      '<div class="stat-grid mt-10">' +
+      '<div class="stat stat--brand"><div class="stat__label">实收总额</div>' +
+      '<div class="stat__value">¥' + M.money(s.revenue_cents) + "</div></div>" +
+      '<div class="stat"><div class="stat__label">原价总额</div>' +
+      '<div class="stat__value" style="font-size:19px">¥' + s.gross_display + "</div></div>" +
+      '<div class="stat stat--ok"><div class="stat__label">优惠出去</div>' +
+      '<div class="stat__value" style="font-size:19px">¥' + s.discount_display + "</div>" +
+      '<div class="tiny faint">相当于 ' + M.esc(s.effective_rate) + "</div></div>" +
+      '<div class="stat"><div class="stat__label">订单数</div><div class="stat__value">' +
+      M.nums(s.orders) + "<small> 单</small></div></div>" +
+      '<div class="stat"><div class="stat__label">卖出件数</div><div class="stat__value">' +
+      M.nums(s.item_count) + "<small> 件</small></div></div>" +
+      '<div class="stat"><div class="stat__label">客单价</div>' +
+      '<div class="stat__value" style="font-size:19px">¥' + M.money(s.avg_order_cents) +
+      "</div></div></div>" +
+      '<div class="card mt-16"><div class="section" style="margin-top:0">商品销量排行</div>' +
+      (data.products.length ? '<div class="bars">' + data.products.map((p) => {
+        const max = data.products[0].revenue_cents || 1;
+        return '<div><div class="bar__top"><span class="bar__label">' + M.esc(p.name) +
+          '</span><span class="bar__value">' + p.qty + " 件 · ¥" + M.money(p.revenue_cents) +
+          '</span></div><div class="bar__track"><div class="bar__fill" style="width:' +
+          Math.max(3, p.revenue_cents / max * 100) + '%"></div></div></div>';
+      }).join("") + "</div>" : '<div class="small faint">还没有成交</div>') + "</div>" +
+      '<div class="card"><div class="section" style="margin-top:0">每小时成交</div>' +
+      (data.hourly.length ? '<div class="bars">' + data.hourly.map((h) => {
+        const max = Math.max.apply(null, data.hourly.map((x) => x.revenue_cents)) || 1;
+        return '<div><div class="bar__top"><span class="bar__label">' + h.hour +
+          ':00 前后</span><span class="bar__value">' + h.orders + " 单 · ¥" +
+          M.money(h.revenue_cents) + '</span></div><div class="bar__track"><div class="bar__fill" ' +
+          'style="width:' + Math.max(3, h.revenue_cents / max * 100) + '%"></div></div></div>';
+      }).join("") + "</div>" : '<div class="small faint">还没有成交</div>') + "</div>" +
+      '<div class="section">交易记录 <span class="badge">' +
+      Biz.listTransactions(9999, sessionId).length + " 条</span>" +
+      '<button class="btn btn--ghost btn--sm" id="st-export" type="button" ' +
+      'style="margin-left:auto">导出 CSV</button></div>' +
+      (function () {
+        const txs = Biz.listTransactions(60, sessionId);
+        if (!txs.length) {
+          return '<div class="card"><div class="empty"><span class="empty__icon">🧾</span>' +
+            '<div class="empty__title">还没有交易记录</div></div></div>';
+        }
+        return '<div class="card card--flush"><div class="list">' + txs.map((tx) =>
+          '<div class="item' + (tx.status === "voided" ? " is-voided" : "") +
+          '" data-tx="' + tx.id + '"><div class="item__main">' +
+          '<div class="item__title">' + M.esc(Biz.txQuickText(tx)) + "</div>" +
+          '<div class="item__sub">#' + tx.id + " · " + M.esc(M.hm(tx.created_at)) +
+          (tx.discount_cents ? " · 省 ¥" + M.money(tx.discount_cents) : "") +
+          (tx.status === "voided" ? " · 已撤销" : "") + "</div></div>" +
+          '<div class="item__amount">¥' + M.money(tx.final_cents) + "</div></div>").join("") +
+          "</div></div>";
+      })();
+
+    document.getElementById("st-session").addEventListener("change", (e) => {
+      local.statsSessionId = e.target.value; viewStats();
+    });
+    host.querySelectorAll("[data-tx]").forEach((b) =>
+      b.addEventListener("click", () => {
+        const tx = Biz.state().transactions.find((t) => t.id === Number(b.dataset.tx));
+        showReceipt(tx);
+      }));
+    document.getElementById("st-export").addEventListener("click", () => {
+      const txs = Biz.listTransactions(9999, sessionId);
+      if (!txs.length) { toast("还没有交易可导出", "error"); return; }
+      const rows = [["单号", "时间", "内容", "原价", "优惠", "实收", "客人付", "找零", "状态", "备注"]];
+      txs.forEach((tx) => rows.push([
+        tx.id, tx.created_at, Biz.txQuickText(tx), M.money(tx.gross_cents),
+        M.money(tx.discount_cents), M.money(tx.final_cents),
+        tx.paid_cents == null ? "" : M.money(tx.paid_cents),
+        tx.change_cents == null ? "" : M.money(tx.change_cents),
+        tx.status === "voided" ? "已撤销" : "正常", tx.note || "",
+      ]));
+      M.csv("交易流水.csv", rows);
+      toast("CSV 已导出", "ok");
+    });
+  }
+
+  /* ---------------------------------------------------------- 更多（收摊/设置/备份） */
+  function viewMore() {
+    const host = document.getElementById("view-more");
+    const active = Biz.activeSession();
+    const sessions = Biz.listSessions();
+    const s = Biz.settings();
+    const summary = active ? Biz.sessionSummary(active.id) : null;
+    const lines = active ? Biz.sessionLines(active.id) : [];
+    const usage = Store.usage();
+    const imgCount = Biz.state().products.filter((p) => p.image).length;
+
+    host.innerHTML =
+      '<h1 class="title">更多</h1>' +
+      '<p class="desc">收摊结算、场次管理、优惠设置、数据备份都在这里。</p>' +
+
+      '<div class="card"><div class="section" style="margin-top:0">收摊结算' +
+      (active ? '<span class="badge badge--brand">进行中</span>' : "") + "</div>" +
+      (active
+        ? '<div class="notice notice--brand">' + "带来 " + summary.total_brought + " 件，售出 " +
+          summary.total_sold + " 件，剩余 " + summary.total_remaining + " 件，共 " + summary.orders +
+          " 单，实收 " + summary.revenue_display + " 元</div>"
+        : '<div class="notice notice--warn">现在没有进行中的场次，点「开新一场」开始记账。</div>') +
+      (summary ? '<div class="stat-grid mt-10">' +
+        '<div class="stat stat--brand"><div class="stat__label">实收</div><div class="stat__value">¥' +
+        summary.revenue_display + "</div></div>" +
+        '<div class="stat stat--ok"><div class="stat__label">优惠出去</div>' +
+        '<div class="stat__value" style="font-size:19px">¥' + summary.discount_display + "</div>" +
+        '<div class="tiny faint">相当于 ' + M.esc(summary.effective_rate) + "</div></div>" +
+        '<div class="stat"><div class="stat__label">带出 / 售出 / 剩余</div>' +
+        '<div class="stat__value" style="font-size:17px">' + summary.total_brought + " / " +
+        summary.total_sold + " / " + summary.total_remaining + "</div></div>" +
+        (summary.voided ? '<div class="stat stat--danger"><div class="stat__label">撤销单数</div>' +
+          '<div class="stat__value">' + summary.voided + "<small> 单</small></div></div>" : "") +
+        "</div>" : "") +
+      '<div class="row mt-10">' +
+      '<button class="btn" id="m-new" type="button">＋ 开新一场</button>' +
+      (active ? '<button class="btn" id="m-close" type="button">收摊（结束这一场）</button>' : "") +
+      "</div></div>" +
+
+      (lines.length && summary ? '<div class="card card--flush">' +
+        '<div class="section" style="margin:12px 12px 5px">这一场的明细</div>' +
+        '<div class="list">' + lines.map((l) =>
+          '<div class="item"><div class="item__main"><div class="item__title">' + M.esc(l.name) +
+          (l.low_stock ? ' <span class="badge badge--danger">告急</span>' : "") + "</div>" +
+          '<div class="item__sub">开场 ' + l.opening + (l.restocked ? " · 场内进货 +" + l.restocked : "") +
+          " · 带来 " + l.brought + " · 售出 " + l.sold + " · 剩余 " + l.remaining + "</div></div>" +
+          '<div class="item__amount">¥' + l.revenue_display + "</div></div>").join("") +
+        "</div></div>" +
+        '<div class="row mt-10"><button class="btn btn--block" id="m-print" type="button">' +
+        "🖨 打印 / 存 PDF</button>" +
+        '<button class="btn btn--block" id="m-csv" type="button">导出结算表 CSV</button></div>' : "") +
+
+      '<div class="card"><div class="section" style="margin-top:0">场次记录</div>' +
+      (sessions.length ? '<div class="list">' + sessions.map((x) =>
+        '<div class="item"><div class="item__main"><div class="item__title">' + M.esc(x.name) +
+        (x.is_active ? ' <span class="badge badge--brand">进行中</span>' : "") + "</div>" +
+        '<div class="item__sub">' + M.esc(x.started_at.slice(0, 16)) +
+        (x.ended_at ? " → " + M.esc(x.ended_at.slice(11, 16)) : "") + "</div></div>" +
+        '<div class="item__amount">¥' + Biz.sessionSummary(x.id).revenue_display + "</div></div>")
+        .join("") + "</div>" : '<div class="small faint">还没有场次</div>') + "</div>" +
+
+      '<div class="card"><div class="section" style="margin-top:0">摊位设置</div>' +
+      '<label class="field"><span class="field__label">摊位名称</span>' +
+      '<input class="input" id="m-name" maxlength="30" value="' + M.esc(s.stall_name) + '"></label>' +
+      '<div class="form-grid form-grid--2">' +
+      '<label class="field"><span class="field__label">默认比例折扣</span>' +
+      '<input class="input input--num" id="m-percent" type="number" min="0.1" max="10" step="0.1" ' +
+      'value="' + s.percent_value + '"><span class="field__hint">10 = 不打折，8.5 = 85 折</span></label>' +
+      '<label class="field"><span class="field__label">默认抹零方式</span>' +
+      '<select class="select" id="m-round">' + Object.keys(M.ROUNDING).map((k) =>
+        '<option value="' + k + '"' + (s.rounding_mode === k ? " selected" : "") + ">" +
+        M.ROUNDING[k] + "</option>").join("") + "</select></label>" +
+      '<label class="field"><span class="field__label">库存预警线（默认）</span>' +
+      '<input class="input input--num" id="m-alert" type="number" min="0" step="1" value="' +
+      s.low_stock_alert + '"></label></div>' +
+      '<label class="switch"><input type="checkbox" id="m-neg"' +
+      (s.allow_negative_stock ? " checked" : "") + '><span class="switch__track"></span>' +
+      "<span>允许库存卖成负数</span></label>" +
+      '<div class="field__hint" style="margin-left:53px">默认关闭：库存不够时会拦住你。' +
+      "如果经常「实际有货但上架时数少了」，打开这个会省事（收银时仍会问你一次）。</div>" +
+      '<button class="btn btn--primary btn--block mt-10" id="m-save" type="button">保存设置</button>' +
+      "</div>" +
+
+      '<div class="card"><div class="section" style="margin-top:0">套装价（任意 N 件 X 元）</div>' +
+      '<p class="small muted" style="margin-top:0">挑可以互相凑单的商品。' +
+      "「任意 3 件 20 元」就是这几种一起买满 3 件只收 20 元；只在比单买便宜时才生效。</p>" +
+      '<div id="m-bundles"></div>' +
+      '<button class="btn btn--sm mt-10" id="m-add-bundle" type="button">＋ 加一个套装</button></div>' +
+
+      '<div class="card"><div class="section" style="margin-top:0">数据备份</div>' +
+      '<p class="small muted" style="margin-top:0">所有数据都存在这台手机里，没有服务器。' +
+      "换手机、清浏览器数据之前，一定要先导出备份。</p>" +
+      (function () {
+        const check = Store.selfCheck();
+        const usage2 = Store.usage();
+        if (check.ok) {
+          return '<div class="notice notice--ok">✔ 存储正常，可以放心用。已用约 ' +
+            Math.round(usage2.bytes / 1024) + " KB（商品 " + Biz.state().products.length +
+            " 款，含图 " + imgCount + " 张）</div>";
+        }
+        return '<div class="notice notice--danger">✘ <b>这台手机上存不住数据</b>（' +
+          M.esc(check.reason) + "）。<br>" +
+          "原因通常是：用浏览器直接打开本地文件时，这个浏览器不允许网页存数据。<br>" +
+          "<b>请换一种打开方式</b>（手机安装说明里有两种办法），或者每次都" +
+          "在离开前「导出备份」，下次打开再「导入备份」。</div>";
+      })() +
+      (usage.memoryOnly
+        ? '<div class="notice notice--warn mt-10">注意：现在这个状态下，<b>一关页面数据就没了</b>。' +
+          "请立刻导出备份，并按说明换一种打开方式。</div>" : "") +
+      '<div class="row mt-10">' +
+      '<button class="btn" id="m-export" type="button">⬇ 导出备份</button>' +
+      '<button class="btn" id="m-import" type="button">⬆ 导入备份</button>' +
+      "</div>" +
+      '<input type="file" id="m-file" accept=".json,application/json" class="hidden">' +
+      '<button class="btn btn--danger btn--block mt-10" id="m-reset" type="button">' +
+      "清空所有数据</button></div>" +
+
+      '<div class="card"><div class="small faint">' +
+      "雪雪の出摊计算器 · 手机版<br>" +
+      "纯本地运行，不联网、不上传。数据存于本机浏览器存储。<br>" +
+      "查看时间：" + M.esc(M.now()) + "</div>" +
+      /* GPL-3.0 建议在界面显著位置展示版权与免责声明 */
+      '<div class="small faint" style="margin-top:9px;padding-top:9px;' +
+      'border-top:1px solid var(--line)">' +
+      "Copyright (C) 2026 雪雪 / Yuki Archive<br>" +
+      "本程序为自由软件，按 GNU GPL v3.0（或更新版本）发布，" +
+      "不提供任何担保；完整许可见仓库中的 LICENSE 文件。" +
+      "</div></div>";
+
+    document.getElementById("m-new").addEventListener("click", () => askNewSession());
+    const closeBtn = document.getElementById("m-close");
+    if (closeBtn) closeBtn.addEventListener("click", () => askCloseSession(active));
+    const printBtn = document.getElementById("m-print");
+    if (printBtn) printBtn.addEventListener("click", () => window.print());
+    const csvBtn = document.getElementById("m-csv");
+    if (csvBtn) csvBtn.addEventListener("click", () => {
+      const rows = [["商品", "分类", "开场", "场内进货", "带来", "售出", "剩余", "单价", "销售额"]];
+      lines.forEach((l) => rows.push([l.name, l.category, l.opening, l.restocked, l.brought,
+                                      l.sold, l.remaining, l.price_display, l.revenue_display]));
+      rows.push([]);
+      rows.push(["带出", summary.total_brought]); rows.push(["售出", summary.total_sold]);
+      rows.push(["剩余", summary.total_remaining]); rows.push(["订单数", summary.orders]);
+      rows.push(["实收", summary.revenue_display]);
+      M.csv("收摊结算_" + active.name + ".csv", rows);
+      toast("结算表已导出", "ok");
+    });
+
+    renderBundles();
+    document.getElementById("m-add-bundle").addEventListener("click", () => {
+      const list = (Biz.settings().bundle_rules || []).slice();
+      const last = list[list.length - 1];
+      list.push({
+        name: "任意 " + ((last ? last.qty : 2) + 1) + " 件 " +
+              (((last ? last.price_cents : 1500) + 500) / 100) + " 元",
+        qty: (last ? last.qty : 2) + 1,
+        price_cents: (last ? last.price_cents : 1500) + 500,
+        product_ids: [],
+      });
+      Biz.saveSettings({ bundle_rules: list });
+      renderBundles();
+    });
+
+    document.getElementById("m-save").addEventListener("click", () => {
+      const res = Biz.saveSettings({
+        stall_name: document.getElementById("m-name").value,
+        percent_value: parseFloat(document.getElementById("m-percent").value),
+        rounding_mode: document.getElementById("m-round").value,
+        low_stock_alert: parseInt(document.getElementById("m-alert").value, 10) || 0,
+        allow_negative_stock: document.getElementById("m-neg").checked,
+      });
+      if (!res.ok) { toast(res.error, "error"); return; }
+      toast("设置已保存", "ok");
+      render();
+    });
+
+    document.getElementById("m-export").addEventListener("click", () => {
+      const archive = Biz.exportArchive();
+      M.download("出摊备份_" + M.today() + ".json",
+                 JSON.stringify(archive), "application/json");
+      toast("备份已导出，请存好这个文件", "ok");
+    });
+    const fileInput = document.getElementById("m-file");
+    document.getElementById("m-import").addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", () => {
+      const f = fileInput.files && fileInput.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const mode = await confirm({
+          title: "怎么导入？",
+          body: "<p>请选择处理方式：</p>" +
+                "<p><strong>替换</strong>：手机上的现有数据全部换成文件里的（推荐第一次从电脑搬过来时用）。<br>" +
+                "<strong>合并</strong>：保留手机现有数据，把文件里的商品和单据追加进来。</p>",
+          confirmText: "替换（清空现有的）", cancelText: "合并进来", danger: true,
+        });
+        const res = Biz.importArchive(reader.result, mode ? "replace" : "merge");
+        fileInput.value = "";
+        if (!res.ok) { toast(res.error, "error"); return; }
+        toast("导入好了：商品 " + res.counts.products + " 款，单据 " + res.counts.transactions + " 笔",
+              "ok");
+        Biz.ensureSession();
+        render();
+      };
+      reader.onerror = () => toast("读不出这个文件", "error");
+      reader.readAsText(f);
+    });
+
+    document.getElementById("m-reset").addEventListener("click", async () => {
+      const yes = await confirm({
+        title: "清空所有数据？",
+        body: "<p>商品、单据、库存流水、场次全部会消失，<strong>无法恢复</strong>。</p>" +
+              '<p class="small muted">如果里面有真实账目，请先「导出备份」。</p>',
+        confirmText: "确认清空", danger: true,
+      });
+      if (!yes) return;
+      Biz.resetAll();
+      Biz.ensureSession();
+      toast("已清空", "ok");
+      render();
+    });
+  }
+
+  function renderBundles() {
+    const host = document.getElementById("m-bundles");
+    if (!host) return;
+    const list = Biz.settings().bundle_rules || [];
+    const products = Biz.listProducts(true);
+    if (!list.length) {
+      host.innerHTML = '<div class="small faint">还没有套装。不加也没关系。</div>';
+      return;
+    }
+    if (!products.length) {
+      host.innerHTML = '<div class="notice notice--warn">还没有上架的商品，先去「商品」页添加。</div>';
+      return;
+    }
+    host.innerHTML = list.map((b, i) =>
+      '<div class="bundle-card" style="margin-bottom:10px">' +
+      '<div class="row"><input class="input" data-bn="' + i + '" maxlength="30" value="' +
+      M.esc(b.name) + '" style="flex:1">' +
+      '<button class="btn btn--ghost btn--sm" type="button" data-bd="' + i + '">✕</button></div>' +
+      '<div class="row mt-6"><span class="small muted nowrap">任意</span>' +
+      '<input class="input input--num" data-bq="' + i + '" type="number" min="2" max="99" step="1" ' +
+      'value="' + b.qty + '" style="max-width:70px">' +
+      '<span class="small muted nowrap">件，只收</span>' +
+      '<input class="input input--num" data-bp="' + i + '" type="number" min="0" step="0.5" ' +
+      'value="' + (b.price_cents / 100).toFixed(2) + '" style="max-width:95px">' +
+      '<span class="small muted nowrap">元</span></div>' +
+      '<div class="bundle-chips">' + products.map((p) =>
+        '<label class="bundle-chip"><input type="checkbox" data-bc="' + i + '" value="' + p.id + '"' +
+        (b.product_ids.indexOf(p.id) >= 0 ? " checked" : "") + "><span>" + M.esc(p.name) +
+        ' <span class="faint">¥' + p.price_display + "</span></span></label>").join("") +
+      "</div></div>").join("");
+
+    function patch(i, fn) {
+      const rules = (Biz.settings().bundle_rules || []).map((x) => Object.assign({}, x));
+      if (!rules[i]) return;
+      fn(rules[i]);
+      Biz.saveSettings({ bundle_rules: rules });
+    }
+    host.querySelectorAll("[data-bn]").forEach((el2) =>
+      el2.addEventListener("change", () => patch(Number(el2.dataset.bn), (r) => { r.name = el2.value; })));
+    host.querySelectorAll("[data-bq]").forEach((el2) =>
+      el2.addEventListener("change", () => patch(Number(el2.dataset.bq),
+        (r) => { r.qty = Math.max(2, parseInt(el2.value, 10) || 2); })));
+    host.querySelectorAll("[data-bp]").forEach((el2) =>
+      el2.addEventListener("change", () => patch(Number(el2.dataset.bp),
+        (r) => { r.price_cents = M.toCents(el2.value) || 0; })));
+    host.querySelectorAll("[data-bc]").forEach((el2) =>
+      el2.addEventListener("change", () => {
+        const i = Number(el2.dataset.bc);
+        const checked = Array.prototype.filter.call(
+          host.querySelectorAll('[data-bc="' + i + '"]'), (x) => x.checked).map((x) => Number(x.value));
+        patch(i, (r) => { r.product_ids = checked; });
+      }));
+    host.querySelectorAll("[data-bd]").forEach((el2) =>
+      el2.addEventListener("click", () => {
+        const list2 = (Biz.settings().bundle_rules || []).filter((x, idx) =>
+          idx !== Number(el2.dataset.bd));
+        Biz.saveSettings({ bundle_rules: list2 });
+        renderBundles();
+      }));
+  }
+
+  async function askNewSession() {
+    const active = Biz.activeSession();
+    const box = document.createElement("div");
+    const d = new Date();
+    const suggestion = (d.getMonth() + 1) + "月" + d.getDate() + "日 出摊";
+    box.innerHTML =
+      (active ? '<div class="notice notice--warn">现在「' + M.esc(active.name) +
+        "」正在进行，开新一场会先把它收尾（已记的单子不会丢，只是以后统计归到这一场名下）。</div>"
+        : "") +
+      '<label class="field mt-16"><span class="field__label">这一场叫什么？</span>' +
+      '<input class="input" id="ns-name" maxlength="40" value="' + M.esc(suggestion) + '"></label>' +
+      '<label class="field"><span class="field__label">备注（可选）</span>' +
+      '<input class="input" id="ns-note" maxlength="60" placeholder="比如：某高校夏季场"></label>';
+    const handle = modal({ title: "开新一场", body: box, footer: "" });
+    handle.footer.innerHTML = "";
+    const cancel = document.createElement("button");
+    cancel.className = "btn"; cancel.type = "button"; cancel.textContent = "取消";
+    const save = document.createElement("button");
+    save.className = "btn btn--primary"; save.type = "button"; save.textContent = "开始这一场";
+    save.style.flex = "1.5";
+    cancel.addEventListener("click", () => handle.close());
+    save.addEventListener("click", () => {
+      const res = Biz.startSession(box.querySelector("#ns-name").value,
+                                   box.querySelector("#ns-note").value);
+      if (!res.ok) { toast(res.error, "error"); return; }
+      handle.close();
+      toast("新的一场开始了", "ok");
+      render();
+    });
+    handle.footer.appendChild(cancel);
+    handle.footer.appendChild(save);
+  }
+
+  async function askCloseSession(session) {
+    const yes = await confirm({
+      title: "「" + session.name + "」收摊？",
+      body: "<p>收摊后这一场就结束了，结算表会固定下来作为这一场的最终结果。</p>" +
+            '<p class="small muted">之后新卖出的东西会记到下一场（如果还没开新场，会自动开一场新的）。' +
+            "已经记好的单子不受影响。</p>",
+      confirmText: "确认收摊",
+    });
+    if (!yes) return;
+    const res = Biz.closeSession(session.id);
+    if (!res.ok) { toast(res.error, "error"); return; }
+    toast("这一场已收摊", "ok");
+    render();
+  }
+
+  /* ---------------------------------------------------------- 场次抽屉 */
+  function openSessionSheet() {
+    const sessions = Biz.listSessions();
+    const active = Biz.activeSession();
+    el.sessionBody.innerHTML =
+      '<div class="notice ' + (active ? "notice--brand" : "notice--warn") + '">' +
+      (active ? "当前正在进行：<strong>" + M.esc(active.name) + "</strong>，新单子都会记到这一场。"
+              : "现在没有进行中的场次，下一个单子会自动开一场。") + "</div>" +
+      '<button class="btn btn--primary btn--block mt-10" id="ss-new" type="button">＋ 开新一场</button>' +
+      (active ? '<button class="btn btn--block mt-6" id="ss-close" type="button">收摊（结束这一场）' +
+        "</button>" : "") +
+      '<div class="section">历史场次</div>' +
+      (sessions.length ? '<div class="list">' + sessions.map((x) => {
+        const sum = Biz.sessionSummary(x.id);
+        return '<div class="item"><div class="item__main"><div class="item__title">' + M.esc(x.name) +
+          (x.is_active ? ' <span class="badge badge--brand">进行中</span>' : "") + "</div>" +
+          '<div class="item__sub">' + sum.orders + " 单 · 售出 " + sum.total_sold +
+          " 件 · " + M.esc(x.started_at.slice(0, 16)) + "</div></div>" +
+          '<div class="item__amount">¥' + sum.revenue_display + "</div></div>";
+      }).join("") + "</div>" : '<div class="small faint">还没有场次</div>');
+
+    document.getElementById("ss-new").addEventListener("click", () => {
+      closeSheets(); askNewSession();
+    });
+    const close = document.getElementById("ss-close");
+    if (close) close.addEventListener("click", () => { closeSheets(); askCloseSession(active); });
+    openSheet(el.sessionSheet);
+  }
+
+  /* ---------------------------------------------------------- 启动 */
+  function boot() {
+    document.getElementById("hdr-session").addEventListener("click", openSessionSheet);
+    renderNav();
+    // 启动即自检存储：若无法写入，必须立刻提示，避免用户记录整场后才发现在做无用功
+    const check = Store.selfCheck();
+    Biz.ensureSession();
+    Biz.touch();
+    go("cashier");
+    if (!check.ok) {
+      setTimeout(() => {
+        modal({
+          title: "⚠ 这台手机上存不住数据",
+          body: "<p>本地存储写入测试未通过。</p>" +
+                '<p class="small muted">原因：' + M.esc(check.reason) + "。<br>" +
+                "常见于「用浏览器直接打开本地 HTML 文件」，有些浏览器不允许这样存数据。</p>" +
+                '<p><b>现在开始记的账，一关页面就会消失。</b></p>' +
+                "<p>两个办法：<br>" +
+                "① 按手机安装说明里的「方法一」重新打开（数据就能存住）；<br>" +
+                "② 先临时用着，但离开前务必去「更多 → 导出备份」，下次再导入。</p>",
+        });
+      }, 400);
+    } else {
+      showStorageWarningIfNeeded();
+    }
+  }
+
+  return { boot, go, toast, render, renderCart, viewGoods, viewStock, viewStats, viewMore,
+           viewCashier, openSessionSheet, modal, confirm,
+           // 以下均为 ?demo= 界面自检入口使用
+           editProductForDemo: () => editProduct(null),
+           checkoutForDemo: () => {
+             // 空购物车无法打开结算弹窗，先自动加入两件商品
+             if (!Biz.cartLines().length) {
+               Biz.listProducts(true).slice(0, 2).forEach((p) => {
+                 Biz.addToCartForce(p.id);
+                 Biz.addToCartForce(p.id);
+               });
+               render();
+             }
+             openCheckout();
+           },
+           receiptForDemo: () => {
+             const target = Biz.listProducts(true)[0];
+             if (target) { Biz.addToCartForce(target.id); Biz.commitTransaction({}); }
+             const tx = Biz.listTransactions(1)[0];
+             if (tx) showReceipt(tx);
+           },
+           sessionSheetForDemo: openSessionSheet };
+})();
+
+document.addEventListener("DOMContentLoaded", function () { UI.boot(); });
+
+/* 界面自检入口：仅当 URL 带 ?demo=xxx 时生效，不影响正常打开。
+   作用是在桌面浏览器中直接调出指定弹窗，便于截图核对布局——
+   仅阅读代码无法判断「按钮是否真的在可视区域内」。 */
+(function () {
+  const params = new URLSearchParams(location.search);
+  const demo = params.get("demo");
+  if (!demo) return;
+
+  /* ?demo=seed 预先写入示例商品，便于观察真实布局 */
+  if (demo === "seed" || demo.indexOf("seed-") === 0) {
+    const existing = Biz.listProducts(false);
+    if (!existing.length) {
+      [["色纸 A3 特典", "色纸", 5000, 40], ["亚克力钥匙扣", "挂件", 2500, 60],
+       ["吧唧徽章 58mm", "吧唧", 1500, 100], ["镭射票根", "票根", 1000, 80],
+       ["无料贴纸包", "贴纸", 800, 120]].forEach(function (row) {
+        Biz.saveProduct({ name: row[0], category: row[1], price_cents: row[2],
+                          stock_initial: row[3], low_stock_alert: 5 });
+      });
+    }
+    if (demo === "seed") return;      // 只灌数据，不弹窗
+  }
+
+  window.addEventListener("load", function () {
+    setTimeout(function () {
+      try {
+        if (demo === "product" || demo === "seed-product") UI.editProductForDemo();
+        else if (demo === "checkout" || demo === "seed-checkout") UI.checkoutForDemo();
+        else if (demo === "receipt" || demo === "seed-receipt") UI.receiptForDemo();
+        else if (demo === "session") UI.sessionSheetForDemo();
+      } catch (e) {
+        document.title = "自检失败：" + (e && e.message);
+        document.body.style.background = "#fdd";
+      }
+    }, 150);
+  });
+})();
+
+/* 给自动化测试用：把内部模块挂到全局，方便脱离浏览器直接验证业务逻辑。
+   浏览器里只是多挂几个引用，不影响任何行为。 */
+if (typeof globalThis !== "undefined") {
+  globalThis.__stallcalc = {
+    M: M, Pricing: Pricing, Store: Store, Biz: Biz, Images: Images, UI: UI,
+  };
+}
+</script>
+</body>
+</html>

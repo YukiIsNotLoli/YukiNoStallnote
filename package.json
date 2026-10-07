@@ -1,0 +1,34 @@
+{
+  "name": "stall-ledger",
+  "version": "1.0.0",
+  "description": "面向摆摊场景的离线收银与余货台账工具。单文件 HTML 应用，添加到手机主屏幕即可使用，不联网、不上传。",
+  "license": "GPL-3.0-or-later",
+  "private": true,
+  "keywords": [
+    "stall",
+    "ledger",
+    "cashier",
+    "inventory",
+    "offline",
+    "pwa",
+    "摆摊",
+    "收银",
+    "库存",
+    "账本"
+  ],
+  "scripts": {
+    "test": "node tests/test_phone.js && node tests/test_handoff.js",
+    "test:logic": "node tests/test_phone.js",
+    "test:import": "node tests/test_handoff.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "出摊计算器.html",
+    "README.md",
+    "手机安装说明.md",
+    "许可说明.md",
+    "LICENSE"
+  ]
+}
